@@ -2,3 +2,7 @@ scratch_work.ipynb
 mychains-Y3.py
 test_script.py
 outputs/
+**/ipynb_checkpoints/
+**/__pycache__/
+*.pyc
+*.pyo
