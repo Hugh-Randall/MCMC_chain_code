@@ -154,7 +154,6 @@ class PNGmodel:
         self.z_fid = z_fid
         self.Om_m0_h = Om_m0_h
         if min_type == 'pseudo':
-            # print('No!')
             params_toy = (poi_toy[0],poi_toy[1],nuiss_toy[0],
                           nuiss_toy[1],nuiss_toy[2],nuiss_toy[3], Psys1_toy, Psys2_toy, Psys3_toy)
             self.obs = self.xi_modded_base_pars(params_toy)

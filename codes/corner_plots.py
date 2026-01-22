@@ -2,6 +2,9 @@
 # numpy for array handling
 import numpy as np
 
+# os for path handling
+import os
+
 # Plt settings
 import matplotlib.pyplot as plt
 plt.rc('text', usetex=True)
@@ -106,5 +109,7 @@ def make_corner(chains, savefig=False, figdir='./figures/', outfile=None, usecol
     if savefig:
         if outfile==None:
             raise Exception('Figure will be saved but outfile was not specified!')
+        if not os.path.exists(figdir):
+            os.mkdir(figdir)
         plt.savefig(figdir+outfile, dpi=300)
     plt.show()
