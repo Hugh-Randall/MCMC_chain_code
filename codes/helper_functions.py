@@ -5,7 +5,7 @@ from astropy.io import fits
 def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
     # Returns the idx locations for diag npcf
     # Output is a boolean array, True for included idxs
-    s_vec = file[1].data['s']
+    s_vec = file['s']
     s_slice = np.zeros(len(s_vec),dtype='bool')
     if s_min==None:
         s_min = min(s_vec)
@@ -24,9 +24,11 @@ def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
 def obs_unwrapper(pkg_loc):
     # Unwraps an individual corr function to use as the observable
     pkg = fits.open(pkg_loc)
-    xi0 = pkg[1].data['xi0']
-    xi2 = pkg[1].data['xi2']
-    xi4 = pkg[1].data['xi4']
+    with fits.open(pkg_loc, memmap=False) as hdul:
+            pkg = hdul[1].data.copy()
+    xi0 = pkg['xi0']
+    xi2 = pkg['xi2']
+    xi4 = pkg['xi4']
     xi_obs = np.concatenate([xi0,xi2,xi4])
     return xi_obs
 

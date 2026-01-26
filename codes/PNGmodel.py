@@ -3,6 +3,10 @@
 import numpy as np
 from astropy.io import fits
 import emcee
+from multiprocessing import Pool
+
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
 
 from codes.helper_functions import *
 
@@ -27,16 +31,18 @@ class PNGmodel:
         # Initializes the model based on a desired s_min/s_max
         print('Initializing...')
         # Set initial params
-        self.fid_corr_file = fits.open(fid_corr)
+        self.fid_corr_filename = fid_corr
+        with fits.open(self.fid_corr_filename, memmap=False) as hdul:
+            self.fid_corr = hdul[1].data.copy()
         self.cov_file = cov_pkg
         self.s_min = s_min
         self.s_max = s_max
         
         # Print length of total observable depending on corr type
-        self.s_slice = get_2pcf_idx_slice(self.fid_corr_file,self.s_min,self.s_max, s_cutwindow)
-        xi0_fid = self.fid_corr_file[1].data['xi0']
-        xi2_fid = self.fid_corr_file[1].data['xi2']
-        xi4_fid = self.fid_corr_file[1].data['xi4']
+        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, s_cutwindow)
+        xi0_fid = self.fid_corr['xi0']
+        xi2_fid = self.fid_corr['xi2']
+        xi4_fid = self.fid_corr['xi4']
         self.xi_fid = np.concatenate([xi0_fid,xi2_fid,xi4_fid])
 
         len_per_xi = len(self.s_slice)
@@ -171,13 +177,14 @@ class PNGmodel:
         self.sampler = emcee.EnsembleSampler(self.nwalkers,9,
                                              self.log_probability_base_pars)
         # Always start the fNL walkers at 0, bias 2? All hard-coded for now
-        # Bias params hard-coded to 2
-        # ps hard-coded to 1
-        # Rb hard-coded to 1
-        # Spread 1e-4
+            # Bias params hard-coded to 2
+            # ps hard-coded to 1
+            # Rb hard-coded to 1
+            # Spread 1e-4
         start_pos = np.asarray([0,1,1,1,1,1,0,0,0])+1e-4*np.random.randn(
             self.nwalkers, 9)
         self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+        
         if plt_out == True:
             # Plot walker output
             plt.rc('xtick', labelsize = 12)
