@@ -1,0 +1,21 @@
+text.usetex: False
+#font.family: sans-serif
+font.size: 16
+
+xtick.top: True
+xtick.direction: in
+xtick.minor.visible: True
+xtick.labelsize: 16
+
+ytick.labelsize: 12
+ytick.right: True
+ytick.direction: in
+ytick.minor.visible: True
+
+axes.labelsize: 16
+axes.titlesize: 22
+
+lines.linewidth: 3
+
+savefig.bbox: tight
+

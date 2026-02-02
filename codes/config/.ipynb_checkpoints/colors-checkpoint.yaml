@@ -1,0 +1,20 @@
+# A configuration file for choosing colors when making corner plots
+
+red:
+    gtc_color: 'reds_old'
+    text_color: 'darkred'
+blue:
+    gtc_color: 'blues_old'
+    text_color: 'royalblue'
+gray:
+    gtc_color: 'grays'
+    text_color: 'dimgrey'
+green:
+    gtc_color: 'greens_old'
+    text_color: 'forestgreen'
+orange:
+    gtc_color: 'oranges'
+    text_color: 'darkorange'
+brown:
+    gtc_color: 'browns'
+    text_color: 'sienna'
