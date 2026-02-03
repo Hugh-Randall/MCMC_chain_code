@@ -4,6 +4,7 @@ import numpy as np
 from astropy.io import fits
 import emcee
 from multiprocessing import Pool
+import yaml
 
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -27,10 +28,13 @@ class PNGmodel:
         self.cov_file = cov_pkg
         self.s_min = s_min
         self.s_max = s_max
-        self.math = math_model
+        self.s_cutwindow = s_cutwindow
+        self.math_model = math_model
+        self.math = self.math_model()
+        self.parameter_defaults = math_model.parameter_defaults
         
         # Print length of total observable depending on corr type
-        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, s_cutwindow)
+        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
         xi0_fid = self.fid_corr['xi0']
         xi2_fid = self.fid_corr['xi2']
         xi4_fid = self.fid_corr['xi4']
@@ -93,60 +97,6 @@ class PNGmodel:
 
     def log_probability_base_pars(self, params):
         return self.math.log_probability_base_pars(self, params)
-    # def xi_modded_base_pars(self, params):
-    #     fNL, b1g, b1h, b1g_fid, ph, pg, Psys1, Psys2, Psys3 = params
-    #     f_g = Omega_m_z(self.z_eff,self.Om_m0_g)**0.55
-    #     f_fid = Omega_m_z(self.z_fid,self.Om_m0_g)**0.55
-    #     f_h = Omega_m_z(self.z_halo,self.Om_m0_h)**0.55
-    #     Dz_g = Dz_norm(self.z_eff,Om_m0=self.Om_m0_g)
-    #     Dz_h = Dz_norm(self.z_halo,Om_m0=self.Om_m0_h)
-        
-    #     ### Define rescale factors ######
-    #     r_fac_fid = np.ones(len(self.xi_fid))
-    #     r_fac_c1 = np.ones(len(self.xi_fid))
-    #     r_fac_c2 = np.ones(len(self.xi_fid))
-        
-    #     r_fac_fid[self.xi0_cond] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
-    #     r_fac_fid[self.xi2_cond] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
-    #     r_fac_fid[self.xi4_cond] = (f_g/f_fid)**2
-    
-    #     r_fac_c1[self.xi0_cond] = ((b1g + f_g/3)*(b1g-pg)*(self.Om_m0_g/Dz_g))/\
-    #                             ((b1h + f_h/3)*(b1h-ph)*(self.Om_m0_h/Dz_h))
-    #     r_fac_c2[self.xi0_cond] = (((b1g-pg)**2)*(self.Om_m0_g/Dz_g))/(((b1h-ph)**2)*(self.Om_m0_h/Dz_h))
-    #     r_fac_c1[self.xi2_cond] = (f_g*(b1g-pg)*(self.Om_m0_g/Dz_g))/(f_h*(b1h-ph)*(self.Om_m0_h/Dz_h))
-    #     #################################    
-    #     fid_term = r_fac_fid*(self.xi_fid)
-    #     PNG_term = r_fac_c1*self.c1*fNL + r_fac_c2*self.c2*(fNL**2)
-    #     sys_term = r_fac_fid*((self.pvar_par_A1*Psys1**2+self.pvar_par_B1*Psys1) +\
-    #                           (self.pvar_par_A2*Psys2**2+self.pvar_par_B2*Psys2) + (self.pvar_par_A3*Psys3**2+self.pvar_par_B3*Psys3))
-    #     return fid_term + PNG_term + sys_term
-    
-    # def util_chi2_base_pars(self, params):
-    #     # Defines chi2 given data and params
-    #     fNL, b1g, b1h, b1g_fid, ph, pg, Psys1, Psys2, Psys3 = params
-    #     exp = self.xi_modded_base_pars(params)
-    #     cov_inv = np.linalg.inv(self.cov_mat)
-    #     return -0.5*np.matmul(np.matmul(cov_inv,(self.obs-exp)),(self.obs-exp))
-    
-    # def log_prior_base_pars(self, params):
-    #     fNL, b1g, b1h, b1g_fid, ph, pg, Psys1, Psys2, Psys3 = params
-    #     if self.poi_hard_lims[0][0] < fNL < self.poi_hard_lims[0][1] and \
-    #         self.poi_hard_lims[1][0] < b1g < self.poi_hard_lims[1][1]:
-    #         return -(Psys1-self.Psys1_gauss_prior[0])**2/(self.Psys1_gauss_prior[1])**2-\
-    #         (Psys2-self.Psys2_gauss_prior[0])**2/(self.Psys2_gauss_prior[1])**2-\
-    #         (Psys3-self.Psys3_gauss_prior[0])**2/(self.Psys3_gauss_prior[1])**2-\
-    #         (b1h-self.gauss_priors[0][0])**2/(self.gauss_priors[0][1])**2-\
-    #         (b1g_fid-self.gauss_priors[1][0])**2/(self.gauss_priors[1][1])**2-\
-    #         (ph-self.gauss_priors[2][0])**2/(self.gauss_priors[2][1])**2-\
-    #         (pg-self.gauss_priors[3][0])**2/(self.gauss_priors[3][1])**2
-    #     return -np.inf
-    
-    # def log_probability_base_pars(self, params):
-    #     # Defines the log probability combining the likelihood and priors
-    #     lp = 0.5*self.log_prior_base_pars(params)
-    #     if not np.isfinite(lp):
-    #         return -np.inf
-    #     return lp + self.util_chi2_base_pars(params)
     
     def test_model_base_pars(self, min_type, poi_hard_lims, gauss_priors, Psys1_gauss_prior, Psys2_gauss_prior, Psys3_gauss_prior,
                              z_eff,Om_m0_g,z_fid,zhalo,Om_m0_h,
@@ -226,4 +176,16 @@ class PNGmodel:
             print(labels[li]+' = '+str(np.round(ints_chain[li][1],decimals=2))+' + '+
                   str(np.round(ints_chain[li][0],decimals=2))+' - '+
                   str(np.round(ints_chain[li][2],decimals=2)))
+            
+        # save Meta File:
+        fname_meta = fname_chain.split('.txt')[0]+'.meta.txt'
+        meta = {}
+        meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
+        meta['fid_corr_filename'] = self.fid_corr_filename
+        meta['cov_filename'] = self.cov_file
+        meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
+        meta['math_model'] = self.math_model
+        with open(fname_meta, 'w') as f:
+            yaml.dump(meta, f)
+            
         return

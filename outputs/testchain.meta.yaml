@@ -1,0 +1,61 @@
+cov_filename: ./inputs/EZ_mock_covariance_matrix.npy
+fid_corr_filename: ./inputs/abacus_averaged_fiducial_wts_fixed.fits
+math_model: !!python/name:codes.MathModels.Y1 ''
+parameter_defaults:
+  KsysDEC:
+    init: 1
+    plot_label: $K_{\mathrm{DEC}}$ [\%]
+    prior: &id001 !!python/tuple
+    - 0
+    - 10
+    - gauss
+  KsysMZLS:
+    init: 1
+    plot_label: $K_{\mathrm{MZLS}}$ [\%]
+    prior: *id001
+  KsysSGC:
+    init: 1
+    plot_label: $K_{\mathrm{SGC}}$ [\%]
+    prior: *id001
+  b1g:
+    init: 1
+    plot_label: $b_{1g}$
+    prior: !!python/tuple
+    - 0.5
+    - 4
+    - flat
+  b1gfid:
+    init: 1
+    plot_label: $b_{1g}^{fid}$
+    prior: &id002 !!python/tuple
+    - 1.94
+    - 0.04
+    - gauss
+  b1h:
+    init: 1
+    plot_label: $b_{1h}$
+    prior: *id002
+  fNL:
+    init: 0
+    plot_label: $f_{NL}$
+    prior: !!python/tuple
+    - -250
+    - 250
+    - flat
+  pg:
+    init: 1
+    plot_label: $p_g$
+    prior: &id003 !!python/tuple
+    - 1
+    - 0.1
+    - gauss
+  ph:
+    init: 1
+    plot_label: $p_h$
+    prior: *id003
+scale:
+  s_cutwindow:
+  - 90
+  - 130
+  s_max: null
+  s_min: null
