@@ -29,8 +29,7 @@ class PNGmodel:
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
-        self.math_model = math_model
-        self.math = self.math_model()
+        self.math = math_model
         self.parameter_defaults = math_model.parameter_defaults
         
         # Print length of total observable depending on corr type
@@ -171,21 +170,21 @@ class PNGmodel:
                                  burn_samples.T[8])).T
         np.savetxt(fname_chain, flat_samples)
         ints_chain = get_ints(flat_samples)
-        labels = ['fNL', 'b1g', 'b1h', 'b1gfid', 'pg', 'ph', 'Ksys1', 'Ksys2', 'Ksys3']
+        labels = ['fNL', 'b1g', 'b1h', 'b1gfid', 'ph', 'pg', 'Ksys1', 'Ksys2', 'Ksys3']
         for li in range(len(labels)):
             print(labels[li]+' = '+str(np.round(ints_chain[li][1],decimals=2))+' + '+
                   str(np.round(ints_chain[li][0],decimals=2))+' - '+
                   str(np.round(ints_chain[li][2],decimals=2)))
             
         # save Meta File:
-        fname_meta = fname_chain.split('.txt')[0]+'.meta.txt'
+        fname_meta = chain_meta_fname(fname_chain)
         meta = {}
         meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
         meta['fid_corr_filename'] = self.fid_corr_filename
         meta['cov_filename'] = self.cov_file
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
-        meta['math_model'] = self.math_model
+        meta['math_model'] = self.math.__class__.__name__
         with open(fname_meta, 'w') as f:
-            yaml.dump(meta, f)
+            yaml.dump(meta, f, sort_keys=False)
             
         return

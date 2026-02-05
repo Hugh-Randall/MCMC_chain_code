@@ -16,17 +16,17 @@ class MathModel:
         raise NotImplementedError
 
 class Y1:
-    parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label'])
+    parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, (-250, 250,'flat'), r'$f_{NL}$']
-    parameter_defaults.loc['b1g'] = [1, (0.5, 4,'flat'), r'$b_{1g}$']
-    parameter_defaults.loc['b1h'] = [1, (1.94,0.04,'gauss'), r'$b_{1h}$']
-    parameter_defaults.loc['b1gfid'] = [1, (1.94,0.04,'gauss'), r'$b_{1g}^{fid}$']
-    parameter_defaults.loc['ph'] = [1, (1,0.1,'gauss'), r'$p_h$']
-    parameter_defaults.loc['pg'] = [1, (1,0.1,'gauss'), r'$p_g$']
-    parameter_defaults.loc['KsysSGC'] = [1, (0,10,'gauss'), r'$K_{\mathrm{SGC}}$ [\%]']
-    parameter_defaults.loc['KsysDEC'] = [1, (0,10,'gauss'), r'$K_{\mathrm{DEC}}$ [\%]']
-    parameter_defaults.loc['KsysMZLS'] = [1, (0,10,'gauss'), r'$K_{\mathrm{MZLS}}$ [\%]']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['b1g'] = [1, [0.5, 4,'flat'], r'$b_{1g}$', 2, '']
+    parameter_defaults.loc['b1h'] = [1, [1.94,0.04,'gauss'], r'$b_{1h}$', 2, '']
+    parameter_defaults.loc['b1gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{1g}^{fid}$', 2, '']
+    parameter_defaults.loc['ph'] = [1, [1,0.1,'gauss'], r'$p_h$', 1, '']
+    parameter_defaults.loc['pg'] = [1, [1,0.1,'gauss'], r'$p_g$', 1,'']
+    parameter_defaults.loc['KsysSGC'] = [1, [0,10,'gauss'], r'$K_{\mathrm{SGC}}$', 1, r'\%']
+    parameter_defaults.loc['KsysDEC'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}}$', 1, r'\%']
+    parameter_defaults.loc['KsysMZLS'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}}$', 1, r'\%']
     
     
     def xi_modded_base_pars(self, mod, params):

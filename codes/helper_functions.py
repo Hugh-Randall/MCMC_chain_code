@@ -65,3 +65,12 @@ def concatenate_quadfits(files):
         c1 = np.concatenate([c1, c1_temp])
         c2 = np.concatenate([c2, c2_temp])
     return c1, c2
+
+def chain_meta_fname(fname):
+    return fname.split('.txt')[0]+'.meta.yaml'
+
+def gtc_ax_ids(N):
+    num_axs = int((N*(N+1))/2)
+    axids = list(range(num_axs))
+    axids = axids[-N:]
+    return axids

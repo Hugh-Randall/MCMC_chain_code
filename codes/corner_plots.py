@@ -1,9 +1,12 @@
 # Imports
 # numpy for array handling
 import numpy as np
+import pandas as pd
 
 # os for path handling
 import os
+
+from codes.helper_functions import gtc_ax_ids
 
 # Plt settings
 import matplotlib.pyplot as plt
@@ -24,26 +27,41 @@ from matplotlib.lines import Line2D
 
 colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 
-def make_corner(chains, savefig=False, figdir='./figures/', outfile=None, usecolors=False, figsize=10, title=None, ksys_prior=True,
+def make_corner(chains, params=None,
+                savefig=False, figdir='./figures/', outfile=None, 
+                usecolors=False, figsize=10, title=None, ksys_prior=True,
                 labelfsize=None, legendfsize=None, tired=False):
-
-    labels_base = [r'$f_{\mathrm{NL}}$',r'$b_{1g}$',r'$K_{\mathrm{DEC}}$', r'$K_{\mathrm{SGC}}$', r'$K_{\mathrm{MZLS}}$']
-    labels_tick = [r'$f_{\mathrm{NL}}$',r'$b_{1g}$',r'$K_{\mathrm{DEC}}$', r'$K_{\mathrm{SGC}}$', r'$K_{\mathrm{MZLS}}$']
     
-    truths = (0, None, None, None, None)
+    parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_defaults, orient='index')
+    parameter_defaults_keys = list(parameter_defaults.index)
 
-    chains_toplot = [c.chain_toplot for c in chains]
+    if params:
+        pass
+    else:
+        params = parameter_defaults_keys
+
+    par_index = [parameter_defaults_keys.index(x) for x in params]   
+    N = len(par_index)
+    axIDs = gtc_ax_ids(N)
+    decs = list(parameter_defaults.loc[params]['num_decimals'])
+    plot_labels = list(parameter_defaults.loc[params]['plot_label'])
+    units = list(parameter_defaults.loc[params]['unit'])
+
+    # Decide if I want truths later
+    # truths = (0, None, None, None, None)
+
+    chains_toplot = [c.chain_array[:,par_index] for c in chains]
     if usecolors:
+        ...
+        # Check that all chains have an assigned color, otherwise assign one to those without
+        ...
+
         colors_keys = [c.color for c in chains]
     else:
         colors_keys = list(colors.keys())[:len(chains)]
     colors_gtc = [colors[key]['gtc_color'] for key in colors_keys]
     colors_text = [colors[key]['text_color'] for key in colors_keys]
-    
-    axIDs = [10,11,12,13,14]
-    par_index = [0,1,6,7,8]
-    decs = [0,2,2,2,2,2,2,2]
-    perc = ['', '', r'[$\%$]', r'[$\%$]',r'[$\%$]']
+        
 
     if labelfsize == None:
         fsize_plot = 15-1*len(chains)
@@ -54,44 +72,48 @@ def make_corner(chains, savefig=False, figdir='./figures/', outfile=None, usecol
     else:
         fsize_legend = legendfsize
 
-    GTC = pygtc.plotGTC(chains=chains_toplot,paramNames=labels_tick, truths = truths, figureSize=figsize,nContourLevels=2,
-                    customTickFont={'family':'serif','size':15},customLabelFont={'family':'serif','size':labelfsize},
-                    customLegendFont={'family':'serif','size':legendfsize},
-                    colorsOrder=colors_gtc, chainLabels=None,
-                    legendMarker='None',
-                    nBins=100,smoothingKernel=3)
+    GTC = pygtc.plotGTC(chains=chains_toplot,paramNames=plot_labels,
+                        # truths = truths, 
+                        figureSize=figsize,nContourLevels=2,
+                        customTickFont={'family':'serif','size':15},customLabelFont={'family':'serif','size':labelfsize},
+                        customLegendFont={'family':'serif','size':legendfsize},
+                        colorsOrder=colors_gtc, chainLabels=None,
+                        legendMarker='None',
+                        nBins=100,smoothingKernel=3)
     
     for axi in range(len(axIDs)):
         for i in range(len(chains)):
             c = chains[i]
             qnts = c.qnts
             if tired:
-                GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)),labels_base[axi]+r' = ${'+\
+                GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)),plot_labels[axi]+r' = ${'+\
                                       str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
                                       '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
-                                      '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+perc[axi],
+                                      '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
                                       transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
                                       fontweight='bold',fontsize=fsize_plot)
             else:
-                GTC.axes[axIDs[axi]].text(0.06,1.1+0.25*i*(0.894**len(chains)),labels_base[axi]+r' = ${'+\
+                GTC.axes[axIDs[axi]].text(0.06,1.1+0.25*i*(0.894**len(chains)),plot_labels[axi]+r' = ${'+\
                                           str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
                                           '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
-                                          '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+perc[axi],
+                                          '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
                                           transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
                                           fontweight='bold',fontsize=fsize_plot)
     if ksys_prior:
-        x_axis = np.linspace(GTC.axes[axIDs[2]].get_xlim()[0],GTC.axes[axIDs[2]].get_xlim()[1], 50)
-        GTC.axes[axIDs[2]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
+        ...
+        # Need to adjust the axis indexing for when the number of parameters plotted changes. 
+        # x_axis = np.linspace(GTC.axes[axIDs[2]].get_xlim()[0],GTC.axes[axIDs[2]].get_xlim()[1], 50)
+        # GTC.axes[axIDs[2]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
         
-        x_axis = np.linspace(GTC.axes[axIDs[3]].get_xlim()[0],GTC.axes[axIDs[3]].get_xlim()[1], 50)
-        GTC.axes[axIDs[3]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
+        # x_axis = np.linspace(GTC.axes[axIDs[3]].get_xlim()[0],GTC.axes[axIDs[3]].get_xlim()[1], 50)
+        # GTC.axes[axIDs[3]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
         
-        x_axis = np.linspace(GTC.axes[axIDs[4]].get_xlim()[0],GTC.axes[axIDs[4]].get_xlim()[1], 50)
-        GTC.axes[axIDs[4]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
+        # x_axis = np.linspace(GTC.axes[axIDs[4]].get_xlim()[0],GTC.axes[axIDs[4]].get_xlim()[1], 50)
+        # GTC.axes[axIDs[4]].plot(x_axis, norm.pdf(x_axis, 0, 10),lw=1,ls='--',color='k')
     
     legend_elements = [Patch(facecolor=colors_text[chains.index(c)], label=c.label) for c in chains][::-1]
     
-    GTC.axes[10].legend(handles = legend_elements, 
+    GTC.axes[axIDs[0]].legend(handles = legend_elements, 
                         bbox_to_anchor =[4.5, 0.2], 
                         fontsize=fsize_legend)
     if title is not None:
