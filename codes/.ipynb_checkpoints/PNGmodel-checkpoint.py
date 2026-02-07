@@ -29,9 +29,10 @@ class PNGmodel:
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
-        self.math_model = math_model
-        self.math = self.math_model()
+        self.math = math_model
         self.parameter_defaults = math_model.parameter_defaults
+        self.num_params = len(self.parameter_defaults)
+        self.parameters = list(self.parameter_defaults.index)
         
         # Print length of total observable depending on corr type
         self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
@@ -98,94 +99,93 @@ class PNGmodel:
     def log_probability_base_pars(self, params):
         return self.math.log_probability_base_pars(self, params)
     
-    def test_model_base_pars(self, min_type, poi_hard_lims, gauss_priors, Psys1_gauss_prior, Psys2_gauss_prior, Psys3_gauss_prior,
-                             z_eff,Om_m0_g,z_fid,zhalo,Om_m0_h,
-                             nwalkers, nsteps, plt_color,
-                             fname = None, poi_toy = None,
-                             nuiss_toy = None, Psys1_toy = None, Psys2_toy = None, Psys3_toy = None, 
-                             data_obs = None,
-                             plt_out = False):
+    def test_model_base_pars(self, min_type, # min_type = 'data' or 'pseudo'
+                             data_obs=None, nwalkers=75, nsteps=20000, # model attributes
+                             plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
+                             **kwargs):
         print('Exploring parameter space...')
-        self.z_eff = z_eff
-        self.Om_m0_g = Om_m0_g
-        self.z_halo = zhalo
-        self.z_fid = z_fid
-        self.Om_m0_h = Om_m0_h
-        if min_type == 'pseudo':
-            params_toy = (poi_toy[0],poi_toy[1],nuiss_toy[0],
-                          nuiss_toy[1],nuiss_toy[2],nuiss_toy[3], Psys1_toy, Psys2_toy, Psys3_toy)
-            self.obs = self.xi_modded_base_pars(params_toy)
-        elif min_type == 'data':
-            self.obs = obs_unwrapper(data_obs)[self.mask]
-        # MCMC chain params
-        self.poi_hard_lims = poi_hard_lims
-        self.gauss_priors = gauss_priors
-        self.Psys1_gauss_prior = Psys1_gauss_prior
-        self.Psys2_gauss_prior = Psys2_gauss_prior
-        self.Psys3_gauss_prior = Psys3_gauss_prior
+        
         self.nwalkers = nwalkers
         self.nsteps = nsteps
+        
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        
+        if min_type == 'pseudo':
+            raise Exception("pseudo min_type not accepted yet")
+            # params_toy = (poi_toy[0],poi_toy[1],nuiss_toy[0],
+            #               nuiss_toy[1],nuiss_toy[2],nuiss_toy[3], Psys1_toy, Psys2_toy, Psys3_toy)
+            # self.obs = self.xi_modded_base_pars(params_toy)
+        elif min_type == 'data':
+            self.obs = obs_unwrapper(data_obs)[self.mask]
+
         # Define and run the sampler chain
-        self.sampler = emcee.EnsembleSampler(self.nwalkers,9,
+        self.sampler = emcee.EnsembleSampler(self.nwalkers,
+                                             self.num_params,
                                              self.log_probability_base_pars)
-        # Always start the fNL walkers at 0, bias 2? All hard-coded for now
-            # Bias params hard-coded to 2
-            # ps hard-coded to 1
-            # Rb hard-coded to 1
-            # Spread 1e-4
-        start_pos = np.asarray([0,1,1,1,1,1,0,0,0])+1e-4*np.random.randn(
-            self.nwalkers, 9)
+        # Pull initial values from parameter defaults
+        
+        start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
+            self.nwalkers, self.num_params)
         self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+
+        if savefig:
+            if not plt_out:
+                print(f'savefig = {savefig} but plt_out = {plt_out}!')
+            if fname_out is None:
+                print(f'savefig = {savefig} but fname_out = {fname_out}!')
         
         if plt_out == True:
             # Plot walker output
             plt.rc('xtick', labelsize = 12)
             plt.rc('ytick', labelsize = 12)
             plt.rc('lines', lw = 1)
-            fig, axes = plt.subplots(9, figsize=(12, 14), sharex=True)
+            fig, axes = plt.subplots(self.num_params, figsize=(12, 14), sharex=True)
             plt_samples = self.sampler.get_chain()
-            plt_labels = [r'$f_{NL}$',r'$b_{1g}$',r'$b_{1h}$',
-                          r'$b_{1g}^{fid}$',r'$p_h$',r'$p_g$',r'$K_{\mathrm{SYS1}}$ [\%]', r'$K_{\mathrm{SYS2}}$ [\%]', r'$K_{\mathrm{SYS3}}$ [\%]']
-            for i in range(9):
+            for i in range(self.num_params):
                 ax = axes[i]
                 ax.plot(plt_samples[:, :, i], plt_color, alpha=0.3)
                 ax.set_xlim(0, len(plt_samples))
-                ax.set_ylabel(plt_labels[i])
+                ax.set_ylabel(self.parameter_defaults['plot_label'].iloc[i])
                 ax.yaxis.set_label_coords(-0.1, 0.5)
             axes[-1].set_xlabel("step number");
-        if fname is not None:
-            plt.savefig(fname)
+            if savefig:
+                plt.savefig(fname_out)
         return
     
     def wrap_chain_base_pars(self,burn_in_steps,thinner,fname_chain):
         burn_samples = self.sampler.get_chain(
             discard=burn_in_steps,thin=thinner,flat=True)
-        flat_samples = np.stack((burn_samples.T[0],
-                                 burn_samples.T[1],
-                                 burn_samples.T[2],
-                                 burn_samples.T[3],
-                                 burn_samples.T[4],
-                                 burn_samples.T[5],
-                                 burn_samples.T[6],
-                                 burn_samples.T[7],
-                                 burn_samples.T[8])).T
-        np.savetxt(fname_chain, flat_samples)
-        ints_chain = get_ints(flat_samples)
-        labels = ['fNL', 'b1g', 'b1h', 'b1gfid', 'pg', 'ph', 'Ksys1', 'Ksys2', 'Ksys3']
-        for li in range(len(labels)):
-            print(labels[li]+' = '+str(np.round(ints_chain[li][1],decimals=2))+' + '+
-                  str(np.round(ints_chain[li][0],decimals=2))+' - '+
-                  str(np.round(ints_chain[li][2],decimals=2)))
+        # (burn_samples == flat_samples).all() evaluates to true so I'm not sure what the point of flat_samples is.
+        # flat_samples = np.stack((burn_samples.T[0],
+        #                          burn_samples.T[1],
+        #                          burn_samples.T[2],
+        #                          burn_samples.T[3],
+        #                          burn_samples.T[4],
+        #                          burn_samples.T[5],
+        #                          burn_samples.T[6],
+        #                          burn_samples.T[7],
+        #                          burn_samples.T[8])).T
+        # np.savetxt(fname_chain, flat_samples)
+        # ints_chain = get_ints(flat_samples)
+        np.savetxt(fname_chain, burn_samples)
+        ints_chain = get_ints(burn_samples)
+        
+        for i in range(self.num_params):
+            param = self.parameters[i]
+            print(param + ' = '+str(np.round(ints_chain[i][1],decimals=2))+' + '+
+                  str(np.round(ints_chain[i][0],decimals=2))+' - '+
+                  str(np.round(ints_chain[i][2],decimals=2)))
             
         # save Meta File:
-        fname_meta = fname_chain.split('.txt')[0]+'.meta.txt'
+        fname_meta = chain_meta_fname(fname_chain)
         meta = {}
         meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
         meta['fid_corr_filename'] = self.fid_corr_filename
         meta['cov_filename'] = self.cov_file
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
-        meta['math_model'] = self.math_model
+        meta['math_model'] = self.math.__class__.__name__
         with open(fname_meta, 'w') as f:
-            yaml.dump(meta, f)
+            yaml.dump(meta, f, sort_keys=False)
             
         return
