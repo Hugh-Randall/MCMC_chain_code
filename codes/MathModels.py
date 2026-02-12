@@ -3,16 +3,20 @@ import pandas as pd
 from codes.helper_functions import *
 
 class MathModel:
-    def xi_modded_base_pars(self, mod, params):
-        raise NotImplementedError
-        
-    def util_chi2_base_pars(self, mod, params):
+    @staticmethod
+    def xi_modded_base_pars(mod, params):
         raise NotImplementedError
 
-    def log_prior_base_pars(self, mod, params):
+    @staticmethod
+    def util_chi2_base_pars(mod, params):
         raise NotImplementedError
 
-    def log_probability_base_pars(self, mod, params):
+    @staticmethod
+    def log_prior_base_pars(mod, params):
+        raise NotImplementedError
+
+    @staticmethod
+    def log_probability_base_pars(mod, params):
         raise NotImplementedError
 
 class Y1:
@@ -96,8 +100,11 @@ class DR2_nosys:
     parameter_defaults.loc['b1gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{1g}^{fid}$', 2, '']
     parameter_defaults.loc['pfid'] = [1, [1,0.1,'gauss'], r'$p_{fid}$', 1,'']
     parameter_defaults.loc['pg'] = [1, [1,0.1,'gauss'], r'$p_g$', 1,'']
-    
-    def xi_modded_base_pars(self, mod, params):
+
+    extra_parameters = {'z_eff', 'z_fid', 'Om_m0_g', 'Om_m0_fid'}
+
+    @staticmethod
+    def xi_modded_base_pars(mod, params):
         fNL, b1g, b1g_fid, pfid, pg = params
         f_g = Omega_m_z(mod.z_eff,mod.Om_m0_g)**0.55
         f_fid = Omega_m_z(mod.z_fid,mod.Om_m0_fid)**0.55
@@ -121,16 +128,18 @@ class DR2_nosys:
         fid_term = r_fac_fid*(mod.xi_fid)
         PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
         return fid_term + PNG_term 
-    
-    def util_chi2_base_pars(self, mod, params):
+
+    @staticmethod
+    def util_chi2_base_pars(mod, params):
         ...
         # Think about how to pull this from Y1 since its functionally the same
         ...
         exp = mod.xi_modded_base_pars(params)
         cov_inv = np.linalg.inv(mod.cov_mat)
         return -0.5*np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
-    
-    def log_prior_base_pars(self, mod, params):
+
+    @staticmethod
+    def log_prior_base_pars(mod, params):
         fNL, b1g, b1g_fid, pfid, pg = params
         if mod.poi_hard_lims[0][0] < fNL < mod.poi_hard_lims[0][1] and \
             mod.poi_hard_lims[1][0] < b1g < mod.poi_hard_lims[1][1]:
@@ -138,8 +147,9 @@ class DR2_nosys:
             (pfid-mod.gauss_priors[1][0])**2/(mod.gauss_priors[1][1])**2-\
             (pg-mod.gauss_priors[2][0])**2/(mod.gauss_priors[2][1])**2
         return -np.inf
-    
-    def log_probability_base_pars(self, mod, params):
+
+    @staticmethod
+    def log_probability_base_pars(mod, params):
         # Defines the log probability combining the likelihood and priors
         lp = 0.5*mod.log_prior_base_pars(params)
         if not np.isfinite(lp):
