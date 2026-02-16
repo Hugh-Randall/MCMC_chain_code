@@ -80,11 +80,22 @@ class PNGmodel:
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
         return
     
-    def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
+    def load_photo_vary_fits(self, pkg_set):
         print('Loading systematic weight variation...')
+        total_fits = concatenate_fits(pkg_set1)[self.mask]
+        
         self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
         self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
         self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
+        return
+        
+    def load_joint_fits(self, pkg_set):
+        print('Loading systematic weight variation...')
+        total_fits = concatenate_fits(pkg_set)[self.mask]
+        self.c1, self.c2 = total_fits[:,0], total_fits[:,1]
+        self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
+        self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
+        self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
         return
 
     def xi_modded_base_pars(self, params):
@@ -113,10 +124,10 @@ class PNGmodel:
             setattr(self, key, value)
         
         if min_type == 'pseudo':
-            raise Exception("pseudo min_type not accepted yet")
-            # params_toy = (poi_toy[0],poi_toy[1],nuiss_toy[0],
-            #               nuiss_toy[1],nuiss_toy[2],nuiss_toy[3], Psys1_toy, Psys2_toy, Psys3_toy)
-            # self.obs = self.xi_modded_base_pars(params_toy)
+            if not hasattr(self, 'params_toy'):
+                raise Exception(""" If min_type=='pseudo' you must pass toy parameters in the kwargs
+                                    Check which parameters are needed with the show_parameters() method! """ )
+            self.obs = self.xi_modded_base_pars(self.params_toy)
         elif min_type == 'data':
             self.obs = obs_unwrapper(data_obs)[self.mask]
 
@@ -201,3 +212,7 @@ class PNGmodel:
         missing_attributes = self.get_missing_attributes()
         print("Must pass the following as a dictionary to 'test_model_base_pars':")
         print( missing_attributes )
+
+    def show_parameters(self):
+        print('This MathModel needs the following parameters:')
+        print(self.parameters)

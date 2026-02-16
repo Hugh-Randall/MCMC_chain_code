@@ -66,6 +66,14 @@ def concatenate_quadfits(files):
         c2 = np.concatenate([c2, c2_temp])
     return c1, c2
 
+def concatenate_fits(files):
+    dfs = []
+    for f in files:
+        df = pd.read_csv(f)
+        dfs.append(df)
+    df_out = pd.concat(dfs)
+    return df_out.to_numpy()
+
 def chain_meta_fname(fname):
     return fname.split('.txt')[0]+'.meta.yaml'
 

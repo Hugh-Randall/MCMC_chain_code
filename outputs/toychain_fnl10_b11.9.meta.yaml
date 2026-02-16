@@ -84,7 +84,7 @@ fid_corr_filename: ./inputs/abacus_averaged_fiducial_wts_fixed.fits
 cov_filename: ./inputs/EZ_mock_covariance_matrix.npy
 scale:
   s_min: null
-  s_max: 60
+  s_max: 380
   s_cutwindow:
   - 90
   - 130
