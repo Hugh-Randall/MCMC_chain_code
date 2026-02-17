@@ -92,7 +92,7 @@ class PNGmodel:
     def load_joint_fits(self, pkg_set):
         print('Loading systematic weight variation...')
         total_fits = concatenate_fits(pkg_set)[self.mask]
-        self.c1, self.c2 = total_fits[:,0], total_fits[:,1]
+        self.c2, self.c1 = total_fits[:,0], total_fits[:,1]
         self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
         self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
         self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
@@ -131,15 +131,17 @@ class PNGmodel:
         elif min_type == 'data':
             self.obs = obs_unwrapper(data_obs)[self.mask]
 
+        with Pool(8) as pool:
         # Define and run the sampler chain
-        self.sampler = emcee.EnsembleSampler(self.nwalkers,
-                                             self.num_params,
-                                             self.log_probability_base_pars)
-        # Pull initial values from parameter defaults
-        
-        start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
-            self.nwalkers, self.num_params)
-        self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+            self.sampler = emcee.EnsembleSampler(self.nwalkers,
+                                                 self.num_params,
+                                                 self.log_probability_base_pars,
+                                                 pool=pool)
+            # Pull initial values from parameter defaults
+            
+            start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
+                self.nwalkers, self.num_params)
+            self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
 
         if savefig:
             if not plt_out:

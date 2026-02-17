@@ -29,8 +29,8 @@ colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 
 def make_corner(chains, params=None,
                 savefig=False, figdir='./figures/', outfile=None, 
-                usecolors=False, figsize=10, title=None, ksys_prior=True,
-                labelfsize=None, legendfsize=None, tired=False):
+                usecolors=False, figsize=None, title=None, ksys_prior=True,
+                labelfsize=None, legendfsize=None):
     
     parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_defaults, orient='index')
     parameter_defaults_keys = list(parameter_defaults.index)
@@ -61,22 +61,28 @@ def make_corner(chains, params=None,
         colors_keys = list(colors.keys())[:len(chains)]
     colors_gtc = [colors[key]['gtc_color'] for key in colors_keys]
     colors_text = [colors[key]['text_color'] for key in colors_keys]
-        
 
+    if figsize == None:
+        figsize = 10 * 0.95**len(params)
+        figsize = 10
+    
     if labelfsize == None:
-        fsize_plot = 15-1*len(chains)
+        fsize_plot = (15) * 0.95**len(params) 
     else: 
         fsize_plot = labelfsize
     if legendfsize == None:
-        fsize_legend = 15-1*len(chains)
+        fsize_legend = (15-1*len(chains))#*(5./len(params))
     else:
         fsize_legend = legendfsize
 
     GTC = pygtc.plotGTC(chains=chains_toplot,paramNames=plot_labels,
                         # truths = truths, 
                         figureSize=figsize,nContourLevels=2,
-                        customTickFont={'family':'serif','size':15},customLabelFont={'family':'serif','size':labelfsize},
-                        customLegendFont={'family':'serif','size':legendfsize},
+                        customTickFont={'family':'serif','size':15 - np.abs(5-len(params))},
+                        # customTickFont={'family':'serif','size':15*(5./len(params))},
+                        customLabelFont={'family':'serif','size':15},
+                        # customLabelFont={'family':'serif','size':15 - 0.5*np.abs(5-len(params))},
+                        customLegendFont={'family':'serif','size':fsize_legend},
                         colorsOrder=colors_gtc, chainLabels=None,
                         legendMarker='None',
                         nBins=100,smoothingKernel=3)
@@ -85,20 +91,18 @@ def make_corner(chains, params=None,
         for i in range(len(chains)):
             c = chains[i]
             qnts = c.qnts
-            if tired:
-                GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)),plot_labels[axi]+r' = ${'+\
-                                      str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
-                                      '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
-                                      '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
-                                      transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
-                                      fontweight='bold',fontsize=fsize_plot)
-            else:
-                GTC.axes[axIDs[axi]].text(0.06,1.1+0.25*i*(0.894**len(chains)),plot_labels[axi]+r' = ${'+\
-                                          str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
-                                          '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
-                                          '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
-                                          transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
-                                          fontweight='bold',fontsize=fsize_plot)
+            # GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)) ,plot_labels[axi]+r' = ${'+\
+            #                       str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
+            #                       '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
+            #                       '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
+            #                       transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
+            #                       fontweight='bold',fontsize=fsize_plot)
+            GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)) ,plot_labels[axi]+r' = ${'+\
+                                  str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
+                                  '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
+                                  '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
+                                  transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
+                                  fontweight='bold',fontsize=fsize_plot)
     if ksys_prior:
         ...
         # Need to adjust the axis indexing for when the number of parameters plotted changes. 
@@ -114,8 +118,11 @@ def make_corner(chains, params=None,
     legend_elements = [Patch(facecolor=colors_text[chains.index(c)], label=c.label) for c in chains][::-1]
     
     GTC.axes[axIDs[0]].legend(handles = legend_elements, 
-                        bbox_to_anchor =[4.5, 0.2], 
-                        fontsize=fsize_legend)
+                          loc='upper right',
+                          bbox_to_anchor=(0.85, 0.85),
+                          bbox_transform=GTC.transFigure,
+                          fontsize=fsize_legend)
+    
     if title is not None:
         plt.suptitle(title, x=0.52)
     if savefig:

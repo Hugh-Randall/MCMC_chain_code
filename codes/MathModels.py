@@ -68,10 +68,14 @@ class Y1:
         # Defines chi2 given data and params
         exp = mod.xi_modded_base_pars(params)
         cov_inv = np.linalg.inv(mod.cov_mat)
-        return -0.5*np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
+        return -np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
 
     @staticmethod
     def log_prior_base_pars(mod, params):
+        ...
+        # Figure out how to make the priors less explicit so we can copy 
+        # the same code for each of the different math models
+        ...
         fNL, b1g, b1h, b1g_fid, ph, pg, Psys1, Psys2, Psys3 = params
         if mod.poi_hard_lims[0][0] < fNL < mod.poi_hard_lims[0][1] and \
             mod.poi_hard_lims[1][0] < b1g < mod.poi_hard_lims[1][1]:
@@ -87,10 +91,10 @@ class Y1:
     @staticmethod
     def log_probability_base_pars(mod, params):
         # Defines the log probability combining the likelihood and priors
-        lp = 0.5*mod.log_prior_base_pars(params)
+        lp = mod.log_prior_base_pars(params)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + mod.util_chi2_base_pars(params)
+        return 0.5*(lp + mod.util_chi2_base_pars(params))
 
 class DR2_nosys:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
@@ -136,7 +140,7 @@ class DR2_nosys:
         ...
         exp = mod.xi_modded_base_pars(params)
         cov_inv = np.linalg.inv(mod.cov_mat)
-        return -0.5*np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
+        return np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
 
     @staticmethod
     def log_prior_base_pars(mod, params):
@@ -151,10 +155,10 @@ class DR2_nosys:
     @staticmethod
     def log_probability_base_pars(mod, params):
         # Defines the log probability combining the likelihood and priors
-        lp = 0.5*mod.log_prior_base_pars(params)
+        lp = mod.log_prior_base_pars(params)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + mod.util_chi2_base_pars(params)
+        return 0.5*(lp + mod.util_chi2_base_pars(params))
 
 class DR2:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
@@ -198,14 +202,14 @@ class DR2:
                               (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) + (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
         return fid_term + PNG_term + sys_term
 
-    @staticmethod
-    def util_chi2_base_pars(mod, params):
-        ...
-        # Think about how to pull this from Y1 since its functionally the same
-        ...
-        exp = mod.xi_modded_base_pars(params)
-        cov_inv = np.linalg.inv(mod.cov_mat)
-        return -0.5*np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
+    # @staticmethod
+    # def util_chi2_base_pars(mod, params):
+    #     ...
+    #     # Think about how to pull this from Y1 since its functionally the same
+    #     ...
+    #     exp = mod.xi_modded_base_pars(params)
+    #     cov_inv = np.linalg.inv(mod.cov_mat)
+    #     return -0.5*np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
 
     @staticmethod
     def log_prior_base_pars(mod, params):
@@ -220,10 +224,18 @@ class DR2:
             (pg-mod.gauss_priors[2][0])**2/(mod.gauss_priors[2][1])**2
         return -np.inf
             
+    # @staticmethod
+    # def log_probability_base_pars(mod, params):
+    #     # Defines the log probability combining the likelihood and priors
+    #     lp = 0.5*mod.log_prior_base_pars(params)
+    #     if not np.isfinite(lp):
+    #         return -np.inf
+    #     return lp + mod.util_chi2_base_pars(params)
+
+    @staticmethod
+    def util_chi2_base_pars(mod, params):
+        return Y1.util_chi2_base_pars(mod, params)
+        
     @staticmethod
     def log_probability_base_pars(mod, params):
-        # Defines the log probability combining the likelihood and priors
-        lp = 0.5*mod.log_prior_base_pars(params)
-        if not np.isfinite(lp):
-            return -np.inf
-        return lp + mod.util_chi2_base_pars(params)
+        return Y1.log_probability_base_pars(mod, params)
