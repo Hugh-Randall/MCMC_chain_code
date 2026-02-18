@@ -78,6 +78,7 @@ class PNGmodel:
         # Takes from the fiducial ensemble
         print('Loading covariance matrix...')
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
+        self.cov_inv = np.linalg.inv(self.cov_mat)
         return
     
     def load_photo_vary_fits(self, pkg_set):
@@ -113,6 +114,7 @@ class PNGmodel:
     def test_model_base_pars(self, min_type, # min_type = 'data' or 'pseudo'
                              data_obs=None, nwalkers=75, nsteps=20000, # model attributes
                              plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
+                             multiprocessing=True,
                              **kwargs):
         print('Exploring parameter space...')
         
@@ -131,16 +133,21 @@ class PNGmodel:
         elif min_type == 'data':
             self.obs = obs_unwrapper(data_obs)[self.mask]
 
-        with Pool(8) as pool:
-        # Define and run the sampler chain
+        # Pull initial values from parameter defaults
+        start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
+                               self.nwalkers, self.num_params)
+        if multiprocessing:
+            with Pool(8) as pool:
+            # Define and run the sampler chain
+                self.sampler = emcee.EnsembleSampler(self.nwalkers,
+                                                     self.num_params,
+                                                     self.log_probability_base_pars,
+                                                     pool=pool)
+                self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+        else:
             self.sampler = emcee.EnsembleSampler(self.nwalkers,
-                                                 self.num_params,
-                                                 self.log_probability_base_pars,
-                                                 pool=pool)
-            # Pull initial values from parameter defaults
-            
-            start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
-                self.nwalkers, self.num_params)
+                                                     self.num_params,
+                                                     self.log_probability_base_pars)
             self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
 
         if savefig:
