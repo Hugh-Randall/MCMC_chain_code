@@ -30,7 +30,7 @@ colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 def make_corner(chains, params=None,
                 savefig=False, figdir='./figures/', outfile=None, 
                 usecolors=False, figsize=None, title=None, ksys_prior=True,
-                labelfsize=None, legendfsize=None):
+                labelfsize=None, legendfsize=None, return_fig=False):
     
     parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_defaults, orient='index')
     parameter_defaults_keys = list(parameter_defaults.index)
@@ -62,16 +62,24 @@ def make_corner(chains, params=None,
     colors_gtc = [colors[key]['gtc_color'] for key in colors_keys]
     colors_text = [colors[key]['text_color'] for key in colors_keys]
 
+    num_params = len(params)
+    num_chains = len(chains)
+
     if figsize == None:
-        figsize = 10 * 0.95**len(params)
-        figsize = 10
+        # figsize = 10 * 0.95**len(params)
+        # figsize = 10
+        figsize = 10 * (num_params/5.)**0.5
     
     if labelfsize == None:
         fsize_plot = (15) * 0.95**len(params) 
+        # fsize_plot = (15) / (num_chains**0.4)
+
     else: 
         fsize_plot = labelfsize
     if legendfsize == None:
         fsize_legend = (15-1*len(chains))#*(5./len(params))
+        # fsize_legend = (15) / (num_chains**0.4)
+
     else:
         fsize_legend = legendfsize
 
@@ -87,6 +95,15 @@ def make_corner(chains, params=None,
                         legendMarker='None',
                         nBins=100,smoothingKernel=3)
     
+    # Get text scaling values:
+    text = GTC.axes[axIDs[0]].text(0.75, 1.05, 'test', transform=GTC.axes[axIDs[0]].transAxes)
+    GTC.canvas.draw()
+
+    bb = text.get_window_extent().transformed(GTC.axes[axIDs[0]].transAxes.inverted())
+    dy = bb._points[1,1]-bb._points[0,1]
+    buffer_size = 0.3*dy
+    text.remove()
+
     for axi in range(len(axIDs)):
         for i in range(len(chains)):
             c = chains[i]
@@ -97,7 +114,7 @@ def make_corner(chains, params=None,
             #                       '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
             #                       transform=GTC.axes[axIDs[axi]].transAxes,color=colors_text[i],
             #                       fontweight='bold',fontsize=fsize_plot)
-            GTC.axes[axIDs[axi]].text(0.06,1.05+0.29*i*(0.894**len(chains)) ,plot_labels[axi]+r' = ${'+\
+            GTC.axes[axIDs[axi]].text(0.06, 1 + (buffer_size+dy)*i + buffer_size, plot_labels[axi]+r' = ${'+\
                                   str(np.round(qnts[par_index[axi]][1],decimals=decs[axi]))+\
                                   '}_{-'+str(np.round(qnts[par_index[axi]][2],decimals=decs[axi]))+\
                                   '}^{+'+str(np.round(qnts[par_index[axi]][0],decimals=decs[axi]))+'}$'+units[axi],
@@ -125,6 +142,10 @@ def make_corner(chains, params=None,
     
     if title is not None:
         plt.suptitle(title, x=0.52)
+
+    # figure_height = GTC.get_figheight()
+    print(type(GTC))
+
     if savefig:
         if outfile==None:
             raise Exception('Figure will be saved but outfile was not specified!')
@@ -132,3 +153,6 @@ def make_corner(chains, params=None,
             os.mkdir(figdir)
         plt.savefig(figdir+outfile, dpi=300)
     plt.show()
+
+    if return_fig:
+        return GTC
