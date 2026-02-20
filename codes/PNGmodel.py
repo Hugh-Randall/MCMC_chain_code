@@ -5,6 +5,7 @@ from astropy.io import fits
 import emcee
 from multiprocessing import Pool
 import yaml
+from sys import platform
 
 import os
 os.environ["OMP_NUM_THREADS"] = "1"
@@ -81,10 +82,8 @@ class PNGmodel:
         self.cov_inv = np.linalg.inv(self.cov_mat)
         return
     
-    def load_photo_vary_fits(self, pkg_set):
-        print('Loading systematic weight variation...')
-        total_fits = concatenate_fits(pkg_set1)[self.mask]
-        
+    def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
+        print('Loading systematic weight variation...')     
         self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
         self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
         self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
@@ -117,6 +116,10 @@ class PNGmodel:
                              multiprocessing=True,
                              **kwargs):
         print('Exploring parameter space...')
+
+        # turn off mutliprocessing for windows
+        if platform == 'win32':
+            multiprocessing = False
         
         self.nwalkers = nwalkers
         self.nsteps = nsteps
@@ -193,13 +196,13 @@ class PNGmodel:
         # np.savetxt(fname_chain, flat_samples)
         # ints_chain = get_ints(flat_samples)
         np.savetxt(fname_chain, burn_samples)
-        ints_chain = get_ints(burn_samples)
+        qnts = get_ints(burn_samples)
         
         for i in range(self.num_params):
             param = self.parameters[i]
-            print(param + ' = '+str(np.round(ints_chain[i][1],decimals=2))+' + '+
-                  str(np.round(ints_chain[i][0],decimals=2))+' - '+
-                  str(np.round(ints_chain[i][2],decimals=2)))
+            print(param + ' = '+str(np.round(qnts[i][1],decimals=2))+' + '+
+                  str(np.round(qnts[i][0],decimals=2))+' - '+
+                  str(np.round(qnts[i][2],decimals=2)))
             
         # save Meta File:
         fname_meta = chain_meta_fname(fname_chain)
@@ -209,6 +212,8 @@ class PNGmodel:
         meta['cov_filename'] = self.cov_file
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
         meta['math_model'] = self.math.__class__.__name__
+        meta['qnts'] = [[float(q) for q in tup] for tup in qnts]
+        print(meta['qnts'])
         with open(fname_meta, 'w') as f:
             yaml.dump(meta, f, sort_keys=False)
             
