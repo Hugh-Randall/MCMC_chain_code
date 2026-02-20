@@ -19,14 +19,13 @@ plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
 
 class PNGmodel:
          
-    def __init__(self, fid_corr, cov_pkg, math_model, exclude=None, s_min=None, s_max=None, s_cutwindow=None):
+    def __init__(self, fid_corr, math_model, exclude=None, s_min=None, s_max=None, s_cutwindow=None):
         # Initializes the model based on a desired s_min/s_max
         print('Initializing...')
         # Set initial params
         self.fid_corr_filename = fid_corr
         with fits.open(self.fid_corr_filename, memmap=False) as hdul:
             self.fid_corr = hdul[1].data.copy()
-        self.cov_file = cov_pkg
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
@@ -74,16 +73,18 @@ class PNGmodel:
         self.c2 = c2[self.mask]
         return
     
-    def load_covariance(self,cov_rescale_factor=1.):
+    def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
         # A function to load the model covariance matrix
         # Takes from the fiducial ensemble
         print('Loading covariance matrix...')
+        self.cov_file = cov_pkg
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
         self.cov_inv = np.linalg.inv(self.cov_mat)
         return
     
     def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
-        print('Loading systematic weight variation...')     
+        print('Loading systematic weight variation...')
+        self.sys_pkg_sets = [pkg_set1, pkg_set2, pkg_set3]
         self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
         self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
         self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
@@ -110,11 +111,12 @@ class PNGmodel:
     def log_probability_base_pars(self, params):
         return self.math.log_probability_base_pars(self, params)
     
-    def test_model_base_pars(self, min_type, # min_type = 'data' or 'pseudo'
-                             data_obs=None, nwalkers=75, nsteps=20000, # model attributes
-                             plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
-                             multiprocessing=True,
-                             **kwargs):
+    def run_sampling(self, min_type, fname_chain,# min_type = 'data' or 'pseudo'
+                     data_obs=None, nwalkers=75, nsteps=20000, # model attributes
+                     plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
+                     multiprocessing=True,
+                     burn_in_steps=500, thinner=1,
+                     **kwargs):
         print('Exploring parameter space...')
 
         # turn off mutliprocessing for windows
@@ -176,47 +178,26 @@ class PNGmodel:
             if savefig:
                 plt.savefig(fname_out)
 
-        for attr in missing_attributes:
-            delattr(self, attr)
-        return
-    
-    def wrap_chain_base_pars(self,burn_in_steps,thinner,fname_chain):
+
+            
         burn_samples = self.sampler.get_chain(
             discard=burn_in_steps,thin=thinner,flat=True)
-        # (burn_samples == flat_samples).all() evaluates to true so I'm not sure what the point of flat_samples is.
-        # flat_samples = np.stack((burn_samples.T[0],
-        #                          burn_samples.T[1],
-        #                          burn_samples.T[2],
-        #                          burn_samples.T[3],
-        #                          burn_samples.T[4],
-        #                          burn_samples.T[5],
-        #                          burn_samples.T[6],
-        #                          burn_samples.T[7],
-        #                          burn_samples.T[8])).T
-        # np.savetxt(fname_chain, flat_samples)
-        # ints_chain = get_ints(flat_samples)
         np.savetxt(fname_chain, burn_samples)
-        qnts = get_ints(burn_samples)
+        self.qnts = get_ints(burn_samples)
         
         for i in range(self.num_params):
             param = self.parameters[i]
-            print(param + ' = '+str(np.round(qnts[i][1],decimals=2))+' + '+
-                  str(np.round(qnts[i][0],decimals=2))+' - '+
-                  str(np.round(qnts[i][2],decimals=2)))
+            print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
+                  str(np.round(self.qnts[i][0],decimals=2))+' - '+
+                  str(np.round(self.qnts[i][2],decimals=2)))
             
         # save Meta File:
-        fname_meta = chain_meta_fname(fname_chain)
-        meta = {}
-        meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
-        meta['fid_corr_filename'] = self.fid_corr_filename
-        meta['cov_filename'] = self.cov_file
-        meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
-        meta['math_model'] = self.math.__class__.__name__
-        meta['qnts'] = [[float(q) for q in tup] for tup in qnts]
-        print(meta['qnts'])
-        with open(fname_meta, 'w') as f:
-            yaml.dump(meta, f, sort_keys=False)
-            
+        self.save_meta(fname_chain)
+
+        missing_attributes.append('qnts')
+        for attr in missing_attributes:
+            delattr(self, attr)
+        
         return
 
     def get_missing_attributes(self):
@@ -230,3 +211,17 @@ class PNGmodel:
     def show_parameters(self):
         print('This MathModel needs the following parameters:')
         print(self.parameters)
+
+    def save_meta(self, fname_chain):
+        fname_meta = chain_meta_fname(fname_chain)
+        meta = {}
+        meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
+        meta['fid_corr_filename'] = self.fid_corr_filename
+        meta['cov_filename'] = self.cov_file
+        meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
+        meta['math_model'] = self.math.__class__.__name__
+        meta['qnts'] = [[float(q) for q in tup] for tup in self.qnts]
+        meta['sys_pkg_sets'] = self.sys_pkg_sets
+        print(meta['qnts'])
+        with open(fname_meta, 'w') as f:
+            yaml.dump(meta, f, sort_keys=False)
