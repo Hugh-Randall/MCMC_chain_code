@@ -44,9 +44,9 @@ class Y1:
         Dz_h = Dz_norm(mod.z_halo,Om_m0=mod.Om_m0_h)
         
         ### Define rescale factors ######
-        r_fac_fid = np.ones(len(mod.xi_fid))
-        r_fac_c1 = np.ones(len(mod.xi_fid))
-        r_fac_c2 = np.ones(len(mod.xi_fid))
+        r_fac_fid = np.ones(len(mod.obs_vec_len))
+        r_fac_c1 = np.ones(len(mod.obs_vec_len))
+        r_fac_c2 = np.ones(len(mod.obs_vec_len))
         
         r_fac_fid[mod.xi0_cond] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
         r_fac_fid[mod.xi2_cond] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
@@ -56,11 +56,13 @@ class Y1:
                                 ((b1h + f_h/3)*(b1h-ph)*(mod.Om_m0_h/Dz_h))
         r_fac_c2[mod.xi0_cond] = (((b1g-pg)**2)*(mod.Om_m0_g/Dz_g))/(((b1h-ph)**2)*(mod.Om_m0_h/Dz_h))
         r_fac_c1[mod.xi2_cond] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_h*(b1h-ph)*(mod.Om_m0_h/Dz_h))
+        
         #################################    
-        fid_term = r_fac_fid*(mod.xi_fid)
-        PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
-        sys_term = r_fac_fid*((mod.pvar_par_A1*Psys1**2+mod.pvar_par_B1*Psys1) +\
-                              (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) + (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
+        fid_term = r_fac_fid*(fid)
+        PNG_term = r_fac_c1*mod.masked['c1']*fNL + r_fac_c2*mod.masked['c2']*(fNL**2)
+        sys_term = r_fac_fid*((mod.mod.masked['pvar_par_A1']*Psys1**2+mod.mod.masked['pvar_par_B1']*Psys1) +\
+                              (mod.mod.masked['pvar_par_A2']*Psys2**2+mod.mod.masked['pvar_par_B2']*Psys2) +\
+                              (mod.mod.masked['pvar_par_A3']*Psys3**2+mod.mod.masked['pvar_par_B3']*Psys3))
         return fid_term + PNG_term + sys_term
 
     @staticmethod
@@ -69,7 +71,7 @@ class Y1:
         exp = mod.xi_modded_base_pars(params)
         # cov_inv = np.linalg.inv(mod.cov_mat)
         # return -np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
-        return -np.matmul(np.matmul(mod.cov_inv,(mod.obs-exp)),(mod.obs-exp))
+        return -np.matmul(np.matmul(mod.masked['cov_inv'],(mod.obs-exp)),(mod.obs-exp))
         
 
     @staticmethod

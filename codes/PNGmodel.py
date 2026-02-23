@@ -1,6 +1,7 @@
 # =========================================================================== #
 # Imports
 import numpy as np
+import pandas as pd
 from astropy.io import fits
 import emcee
 from multiprocessing import Pool
@@ -26,21 +27,96 @@ class PNGmodel:
         self.fid_corr_filename = fid_corr
         with fits.open(self.fid_corr_filename, memmap=False) as hdul:
             self.fid_corr = hdul[1].data.copy()
-        self.s_min = s_min
-        self.s_max = s_max
-        self.s_cutwindow = s_cutwindow
         self.math = math_model
         self.parameter_defaults = math_model.parameter_defaults
         self.num_params = len(self.parameter_defaults)
         self.parameters = list(self.parameter_defaults.index)
         
-        # Print length of total observable depending on corr type
-        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
-        xi0_fid = self.fid_corr['xi0']
-        xi2_fid = self.fid_corr['xi2']
-        xi4_fid = self.fid_corr['xi4']
-        self.xi_fid = np.concatenate([xi0_fid,xi2_fid,xi4_fid])
+        self.xi_fid, self.terms = obs_unwrapper(self.fid_corr_filename)
+        return
 
+    def load_PNG_model(self, files):
+        # Loads c1_n and c2_n coefficients
+        print('Loading PNG model...')
+        # c1, c2 = concatenate_quadfits(files)
+        # self.c1 = c1[self.mask]
+        # self.c2 = c2[self.mask]
+        df = reorder_fits(pd.read_csv(files), self.terms)
+        self.c1, self.c2 = np.asarray(df['c1']), np.asarray(df['c2'])
+        return
+    
+    def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
+        # NOTICE - This is the only part of the model that is assumed to be pre-concatenated.
+        # You MUST be sure that the order of the covariance matrix indices matches the order of self.terms!
+        ...
+        # possibly change this so that it could be computed on the fly like Zack had it originally
+        ...
+        # A function to load the model covariance matrix
+        # Takes from the fiducial ensemble
+        print('Loading covariance matrix...')
+        self.cov_file = cov_pkg
+        # self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
+        self.cov_mat = cov_rescale_factor*np.load(self.cov_file)
+        self.cov_inv = np.linalg.inv(self.cov_mat)
+        return
+    
+    def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
+        print('Loading systematic weight variation...')
+        self.sys_pkg_sets = [pkg_set1, pkg_set2, pkg_set3]
+        # self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
+        # self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
+        # self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
+        
+        df1 = reorder_fits(pd.read_csv(pkg_set1), self.terms)
+        self.pvar_par_B1, self.pvar_par_A1 = np.asarray(df1['c1']), np.asarray(df1['c2'])
+
+        df2 = reorder_fits(pd.read_csv(pkg_set2), self.terms)
+        self.pvar_par_B2, self.pvar_par_A2 = np.asarray(df2['c1']), np.asarray(df2['c2'])
+
+        df3 = reorder_fits(pd.read_csv(pkg_set3), self.terms)
+        self.pvar_par_B3, self.pvar_par_A3 = np.asarray(df3['c1']), np.asarray(df3['c2'])
+        return
+        
+    def load_joint_fits(self, pkg_set):
+        raise Exception( 'This functionality is currently under construction!' )
+        # print('Loading systematic weight variation...')
+        # # total_fits = concatenate_fits(pkg_set)[self.mask]
+        # total_fits = concatenate_fits(pkg_set)[self.mask]
+        
+        # self.c2, self.c1 = total_fits[:,0], total_fits[:,1]
+        # self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
+        # self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
+        # self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
+        return
+
+    def xi_modded_base_pars(self, params):
+        return self.math.xi_modded_base_pars(self, params)
+    
+    def util_chi2_base_pars(self, params):
+        return self.math.util_chi2_base_pars(self, params)
+
+    def log_prior_base_pars(self, params):
+        return self.math.log_prior_base_pars(self, params)
+
+    def log_probability_base_pars(self, params):
+        return self.math.log_probability_base_pars(self, params)
+    
+    def run_sampling(self, 
+                     min_type, # min_type = 'data' or 'pseudo'
+                     fname_chain, # filepath for output chain data
+                     data_obs=None, # Filepath for input observation, necessary if min_type=='data'
+                     s_min=None, s_max=None, s_cutwindow=None, exclude=None, # scale cuts used to decide what to mask in the model
+                     nwalkers=75, nsteps=20000, # model attributes
+                     plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
+                     multiprocessing=False,
+                     burn_in_steps=500, thinner=1,
+                     **kwargs):
+        ... # Need to implement the self.masked change that is present in MathModels.Y1
+        # defining mask
+        self.s_min = s_min
+        self.s_max = s_max
+        self.s_cutwindow = s_cutwindow
+        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
         len_per_xi = len(self.s_slice)
         total_len = len(self.xi_fid)
         self.xi0_cond = np.array(len_per_xi*[True] + 2*len_per_xi*[False], dtype=bool)
@@ -61,64 +137,16 @@ class PNGmodel:
         self.xi0_cond = self.xi0_cond[self.mask]
         self.xi2_cond = self.xi2_cond[self.mask]
         self.xi4_cond = self.xi4_cond[self.mask]
-        total_len = len(self.xi_fid)
-        print('Observable will have {} pts'.format(total_len))
-        return
-
-    def load_PNG_model(self, png_quadfits_files):
-        # Loads c1_n and c2_n coefficients
-        print('Loading PNG model...')
-        c1, c2 = concatenate_quadfits(png_quadfits_files)
-        self.c1 = c1[self.mask]
-        self.c2 = c2[self.mask]
-        return
-    
-    def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
-        # A function to load the model covariance matrix
-        # Takes from the fiducial ensemble
-        print('Loading covariance matrix...')
-        self.cov_file = cov_pkg
-        self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
-        self.cov_inv = np.linalg.inv(self.cov_mat)
-        return
-    
-    def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
-        print('Loading systematic weight variation...')
-        self.sys_pkg_sets = [pkg_set1, pkg_set2, pkg_set3]
-        self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
-        self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
-        self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
-        return
         
-    def load_joint_fits(self, pkg_set):
-        print('Loading systematic weight variation...')
-        total_fits = concatenate_fits(pkg_set)[self.mask]
-        self.c2, self.c1 = total_fits[:,0], total_fits[:,1]
-        self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
-        self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
-        self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
-        return
-
-    def xi_modded_base_pars(self, params):
-        return self.math.xi_modded_base_pars(self, params)
-    
-    def util_chi2_base_pars(self, params):
-        return self.math.util_chi2_base_pars(self, params)
-
-    def log_prior_base_pars(self, params):
-        return self.math.log_prior_base_pars(self, params)
-
-    def log_probability_base_pars(self, params):
-        return self.math.log_probability_base_pars(self, params)
-    
-    def run_sampling(self, min_type, fname_chain,# min_type = 'data' or 'pseudo'
-                     data_obs=None, nwalkers=75, nsteps=20000, # model attributes
-                     plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
-                     multiprocessing=False,
-                     burn_in_steps=500, thinner=1,
-                     **kwargs):
+        self.obs_vec_len = len(self.xi_fid)
+        print('Observable will have {} pts'.format(total_len))
+        ...
+        ######################################################
+        
+        print()
+        
+        ######################################################
         print('Exploring parameter space...')
-
         # turn off mutliprocessing for windows
         if platform == 'win32':
             multiprocessing = False
@@ -136,7 +164,7 @@ class PNGmodel:
                                     Check which parameters are needed with the show_parameters() method! """ )
             self.obs = self.xi_modded_base_pars(self.params_toy)
         elif min_type == 'data':
-            self.obs = obs_unwrapper(data_obs)[self.mask]
+            self.obs, _ = obs_unwrapper(data_obs)[self.mask]
 
         # Pull initial values from parameter defaults
         start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(

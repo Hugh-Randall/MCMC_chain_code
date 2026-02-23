@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from astropy.io import fits
+# from astropy.io import fits
+from astropy.table import Table, vstack
 
 def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
     # Returns the idx locations for diag npcf
@@ -23,14 +24,16 @@ def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
 
 def obs_unwrapper(pkg_loc):
     # Unwraps an individual corr function to use as the observable
-    pkg = fits.open(pkg_loc)
-    with fits.open(pkg_loc, memmap=False) as hdul:
-            pkg = hdul[1].data.copy()
-    xi0 = pkg['xi0']
-    xi2 = pkg['xi2']
-    xi4 = pkg['xi4']
-    xi_obs = np.concatenate([xi0,xi2,xi4])
-    return xi_obs
+    pkg = Table.read(pkg_loc)
+    col_names = list(pkg.columns)
+    terms = col_names.copy()
+    terms.remove('s')
+
+    to_concat = []
+    for term in terms:
+        to_concat.append(pkg[term])
+    xi_obs = np.concatenate(to_concat)
+    return xi_obs, terms
 
 def Omega_m_z(z: float, Om_m0: float):
     # Case with no curvature!
@@ -73,6 +76,11 @@ def concatenate_fits(files):
         dfs.append(df)
     df_out = pd.concat(dfs)
     return df_out.to_numpy()
+
+def reorder_fits(df, terms):
+    temp = df.sort_values(by='s')
+    temp = df.sort_values(by='term', key=lambda column: column.map(lambda e: order.index(e)))
+    return temp
 
 def chain_meta_fname(fname):
     return fname.split('.txt')[0]+'.meta.yaml'
