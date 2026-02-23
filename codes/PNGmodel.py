@@ -114,7 +114,7 @@ class PNGmodel:
     def run_sampling(self, min_type, fname_chain,# min_type = 'data' or 'pseudo'
                      data_obs=None, nwalkers=75, nsteps=20000, # model attributes
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
-                     multiprocessing=True,
+                     multiprocessing=False,
                      burn_in_steps=500, thinner=1,
                      **kwargs):
         print('Exploring parameter space...')
@@ -141,6 +141,8 @@ class PNGmodel:
         # Pull initial values from parameter defaults
         start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
                                self.nwalkers, self.num_params)
+        start_pos[:,1] = (self.poi_hard_lims[1][1]+self.poi_hard_lims[1][0])/2.+1e-5*np.random.randn(self.nwalkers)
+
         if multiprocessing:
             with Pool(8) as pool:
             # Define and run the sampler chain
@@ -221,7 +223,6 @@ class PNGmodel:
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
         meta['math_model'] = self.math.__class__.__name__
         meta['qnts'] = [[float(q) for q in tup] for tup in self.qnts]
-        meta['sys_pkg_sets'] = self.sys_pkg_sets
-        print(meta['qnts'])
+        # meta['sys_pkg_sets'] = self.sys_pkg_sets
         with open(fname_meta, 'w') as f:
             yaml.dump(meta, f, sort_keys=False)

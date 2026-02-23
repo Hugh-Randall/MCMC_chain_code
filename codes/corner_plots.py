@@ -143,9 +143,6 @@ def make_corner(chains, params=None,
     if title is not None:
         plt.suptitle(title, x=0.52)
 
-    # figure_height = GTC.get_figheight()
-    print(type(GTC))
-
     if savefig:
         if outfile==None:
             raise Exception('Figure will be saved but outfile was not specified!')

@@ -5,7 +5,7 @@ import yaml
 class chain:
     def __init__(self, filepath, label,
                  color=None,
-                 load_array=False):
+                 lazy_load=False):
         
         self.filepath = filepath            
         self.color = color
@@ -17,7 +17,7 @@ class chain:
         for key in meta.keys():
             setattr(self, key, meta[key])
 
-        if load_array:
+        if not lazy_load:
             self.load_array()
 
         if not hasattr(self, 'qnts'):
@@ -27,4 +27,4 @@ class chain:
         print(f'finished loading "{self.label}"')
 
     def load_array(self):
-        self.chain_array = np.loadtxt(filepath)
+        self.chain_array = np.loadtxt(self.filepath)

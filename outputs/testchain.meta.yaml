@@ -84,8 +84,46 @@ fid_corr_filename: ./inputs/abacus_averaged_fiducial_wts_fixed.fits
 cov_filename: ./inputs/EZ_mock_covariance_matrix.npy
 scale:
   s_min: null
-  s_max: 70
+  s_max: null
   s_cutwindow:
   - 90
   - 130
-math_model: Y1
+math_model: type
+qnts:
+- - 13.644654840688082
+  - 2.6508444045528723
+  - 13.922746938811072
+- - 0.05151589755872643
+  - 1.873753070754188
+  - 0.05155184192392048
+- - 0.03956876996508796
+  - 1.9418931201355374
+  - 0.03999557824858235
+- - 0.04044300410862611
+  - 1.938395584560059
+  - 0.03989206004838963
+- - 0.09759813204387024
+  - 0.9903937149121219
+  - 0.09855400160324013
+- - 0.1009950715428547
+  - 1.0089413757850705
+  - 0.09937657497756824
+- - 9.8970922028402
+  - 0.23092569397820112
+  - 9.885675141014142
+- - 9.638694747073535
+  - 1.3083067692222983
+  - 9.730235862981317
+- - 9.78767422871556
+  - 0.35032017897501877
+  - 9.815710716594914
+sys_pkg_sets:
+- - ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC_xi0.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC_xi2.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC_xi4.csv
+- - ./inputs/quadfits_LRG_abacus_Y1_Ksys_DEC_xi0.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_DEC_xi2.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_DEC_xi4.csv
+- - ./inputs/quadfits_LRG_abacus_Y1_Ksys_MZLS_xi0.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_MZLS_xi2.csv
+  - ./inputs/quadfits_LRG_abacus_Y1_Ksys_MZLS_xi4.csv
