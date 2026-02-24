@@ -20,7 +20,7 @@ plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
 
 class PNGmodel:
          
-    def __init__(self, fid_corr, math_model, exclude=None, s_min=None, s_max=None, s_cutwindow=None):
+    def __init__(self, fid_corr, math_model):
         # Initializes the model based on a desired s_min/s_max
         print('Initializing...')
         # Set initial params
@@ -33,6 +33,7 @@ class PNGmodel:
         self.parameters = list(self.parameter_defaults.index)
         
         self.xi_fid, self.terms = obs_unwrapper(self.fid_corr_filename)
+        self.N_obs_vec = len(self.xi_fid)
         return
 
     def load_PNG_model(self, files):
@@ -57,7 +58,6 @@ class PNGmodel:
         self.cov_file = cov_pkg
         # self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)
-        self.cov_inv = np.linalg.inv(self.cov_mat)
         return
     
     def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
@@ -105,42 +105,45 @@ class PNGmodel:
                      min_type, # min_type = 'data' or 'pseudo'
                      fname_chain, # filepath for output chain data
                      data_obs=None, # Filepath for input observation, necessary if min_type=='data'
-                     s_min=None, s_max=None, s_cutwindow=None, exclude=None, # scale cuts used to decide what to mask in the model
+                     s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale cuts used to decide what to mask in the model
                      nwalkers=75, nsteps=20000, # model attributes
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
                      multiprocessing=False,
                      burn_in_steps=500, thinner=1,
                      **kwargs):
-        ... # Need to implement the self.masked change that is present in MathModels.Y1
+        
         # defining mask
+        self.exclude = exclude
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
         self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
+        self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
+        
         len_per_xi = len(self.s_slice)
         total_len = len(self.xi_fid)
-        self.xi0_cond = np.array(len_per_xi*[True] + 2*len_per_xi*[False], dtype=bool)
-        self.xi2_cond = np.array(len_per_xi*[False] + len_per_xi*[True] + len_per_xi*[False], dtype=bool)
-        self.xi4_cond = np.array(2*len_per_xi*[False] + len_per_xi*[True], dtype=bool)
 
-        # Mask out whatever will be excluded
-        res = np.concatenate((self.s_slice, self.s_slice,self.s_slice))
-        if exclude is not None:
-            ex = {'xi0': ~self.xi0_cond,
-                  'xi2': ~self.xi2_cond, 
-                  'xi4': ~self.xi4_cond}
-            for x in exclude:
-                res = np.logical_and(res, ex[x])
+        self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
+        for i,term in enumerate(self.terms):
+            self.term_masks[term][i*len_per_xi:(i+1)*len_per_xi] = True
+            
+        self.mask = self.s_mask.copy()
+        for term in exclude:
+            self.mask = np.logical_and(self.mask, ~self.term_masks[term])
+            
+        for term in self.terms:
+            self.term_masks[term] = self.term_masks[term][self.mask]
+
+        arrays_to_mask = ['xi_fid', 'c1', 'c2', 'pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
+        # make it so that arrays_to_mask is created as each part is initialized within the other methods. 
+        self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
+        for tm in arrays_to_mask:
+            self.masked[tm] = getattr(self, tm)[self.mask]
+            
+        self.N_obs_vec_masked = len(self.masked['xi_fid'])
         
-        self.mask = np.array(res, dtype=bool)
-        self.xi_fid = self.xi_fid[self.mask]
-        self.xi0_cond = self.xi0_cond[self.mask]
-        self.xi2_cond = self.xi2_cond[self.mask]
-        self.xi4_cond = self.xi4_cond[self.mask]
-        
-        self.obs_vec_len = len(self.xi_fid)
-        print('Observable will have {} pts'.format(total_len))
-        ...
+        attrs_to_delete = ['mask', 'term_masks', 'masked', 'N_obs_vec_masked', 'exclude']
+        print('Observable will have {} pts'.format(len(self.masked['xi_fid'])))
         ######################################################
         
         print()
@@ -155,6 +158,7 @@ class PNGmodel:
         self.nsteps = nsteps
 
         missing_attributes = self.get_missing_attributes()
+        attrs_to_delete += missing_attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
         
@@ -164,12 +168,18 @@ class PNGmodel:
                                     Check which parameters are needed with the show_parameters() method! """ )
             self.obs = self.xi_modded_base_pars(self.params_toy)
         elif min_type == 'data':
-            self.obs, _ = obs_unwrapper(data_obs)[self.mask]
+            self.obs, _ = obs_unwrapper(data_obs)
+            self.obs = self.obs[self.mask]
+            
+        attrs_to_delete.append(self.obs)
 
         # Pull initial values from parameter defaults
         start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
                                self.nwalkers, self.num_params)
-        start_pos[:,1] = (self.poi_hard_lims[1][1]+self.poi_hard_lims[1][0])/2.+1e-5*np.random.randn(self.nwalkers)
+
+        # The following line is just for fixing the bias 
+        # WILL DELETE AT SOME POINT
+        # start_pos[:,1] = (self.poi_hard_lims[1][1]+self.poi_hard_lims[1][0])/2.+1e-5*np.random.randn(self.nwalkers)
 
         if multiprocessing:
             with Pool(8) as pool:
@@ -208,8 +218,6 @@ class PNGmodel:
             if savefig:
                 plt.savefig(fname_out)
 
-
-            
         burn_samples = self.sampler.get_chain(
             discard=burn_in_steps,thin=thinner,flat=True)
         np.savetxt(fname_chain, burn_samples)
@@ -227,7 +235,6 @@ class PNGmodel:
         missing_attributes.append('qnts')
         for attr in missing_attributes:
             delattr(self, attr)
-        
         return
 
     def get_missing_attributes(self):
@@ -251,6 +258,7 @@ class PNGmodel:
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
         meta['math_model'] = self.math.__class__.__name__
         meta['qnts'] = [[float(q) for q in tup] for tup in self.qnts]
+        meta['exclude'] = self.exclude
         # meta['sys_pkg_sets'] = self.sys_pkg_sets
         with open(fname_meta, 'w') as f:
             yaml.dump(meta, f, sort_keys=False)

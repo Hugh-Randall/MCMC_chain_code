@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-# from astropy.io import fits
-from astropy.table import Table, vstack
+from astropy.io import fits
+# from astropy.table import Table
 
 def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
     # Returns the idx locations for diag npcf
@@ -24,8 +24,10 @@ def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
 
 def obs_unwrapper(pkg_loc):
     # Unwraps an individual corr function to use as the observable
-    pkg = Table.read(pkg_loc)
-    col_names = list(pkg.columns)
+    with fits.open(pkg_loc, memmap=False) as hdul:
+            pkg = hdul[1].data.copy()
+    # pkg = Table.read(pkg_loc)
+    col_names = pkg.columns.names
     terms = col_names.copy()
     terms.remove('s')
 
@@ -79,7 +81,7 @@ def concatenate_fits(files):
 
 def reorder_fits(df, terms):
     temp = df.sort_values(by='s')
-    temp = df.sort_values(by='term', key=lambda column: column.map(lambda e: order.index(e)))
+    temp = df.sort_values(by='term', key=lambda column: column.map(lambda e: terms.index(e)))
     return temp
 
 def chain_meta_fname(fname):
