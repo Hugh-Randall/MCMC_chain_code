@@ -33,6 +33,7 @@ class PNGmodel:
         self.parameters = list(self.parameter_defaults.index)
         
         self.xi_fid, self.terms = obs_unwrapper(self.fid_corr_filename)
+        self.arrays_to_mask = ['xi_fid']
         self.N_obs_vec = len(self.xi_fid)
         return
 
@@ -44,6 +45,7 @@ class PNGmodel:
         # self.c2 = c2[self.mask]
         df = reorder_fits(pd.read_csv(files), self.terms)
         self.c1, self.c2 = np.asarray(df['c1']), np.asarray(df['c2'])
+        self.arrays_to_mask += ['c1','c2']
         return
     
     def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
@@ -75,6 +77,8 @@ class PNGmodel:
 
         df3 = reorder_fits(pd.read_csv(pkg_set3), self.terms)
         self.pvar_par_B3, self.pvar_par_A3 = np.asarray(df3['c1']), np.asarray(df3['c2'])
+
+        self.arrays_to_mask += ['pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
         return
         
     def load_joint_fits(self, pkg_set):
@@ -87,6 +91,7 @@ class PNGmodel:
         # self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
         # self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
         # self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
+        self.arrays_to_mask += ['c1','c2', 'pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
         return
 
     def xi_modded_base_pars(self, params):
