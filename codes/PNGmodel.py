@@ -9,7 +9,6 @@ import yaml
 from sys import platform
 
 import os
-os.environ["OMP_NUM_THREADS"] = "1"
 
 from codes.helper_functions import *
 
@@ -97,14 +96,25 @@ class PNGmodel:
     def xi_modded_base_pars(self, params):
         return self.math.xi_modded_base_pars(self, params)
     
-    def util_chi2_base_pars(self, params):
-        return self.math.util_chi2_base_pars(self, params)
+    # def util_chi2_base_pars(self, params):
+    #     return self.math.util_chi2_base_pars(self, params)
 
-    def log_prior_base_pars(self, params):
-        return self.math.log_prior_base_pars(self, params)
+    # def log_probability_base_pars(self, params):
+    #     return self.math.log_probability_base_pars(self, params)
+
+    def util_chi2_base_pars(self, params):
+        # Defines chi2 given data and params
+        exp = self.xi_modded_base_pars(params)
+        # cov_inv = np.linalg.inv(mod.cov_mat)
+        # return -np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
+        return -np.matmul(np.matmul(self.masked['cov_inv'],(self.obs-exp)),(self.obs-exp))
 
     def log_probability_base_pars(self, params):
-        return self.math.log_probability_base_pars(self, params)
+        # Defines the log probability combining the likelihood and priors
+        lp = self.log_prior_base_pars(params)
+        if not np.isfinite(lp):
+            return -np.inf
+        return 0.5*(lp + self.util_chi2_base_pars(params))
     
     def run_sampling(self, 
                      min_type, # min_type = 'data' or 'pseudo'
@@ -115,6 +125,7 @@ class PNGmodel:
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
                      multiprocessing=False,
                      burn_in_steps=500, thinner=1,
+                     update_priors=None,
                      **kwargs):
         
         # defining mask
@@ -124,6 +135,17 @@ class PNGmodel:
         self.s_cutwindow = s_cutwindow
         self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
         self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
+        self.nwalkers = nwalkers
+        self.nsteps = nsteps
+        self.parameter_info = self.parameter_defaults.copy()
+
+        # Update parameter_info with new priors if applicable
+        if update_priors is not None: 
+            # Must be a dict with keys given by the parameter labels of parameter_defaults
+            # and values with what the defaults will be replaced by
+            # For example update_priors = {'b1g':(2, 0.03, 'gauss')}
+            for key,val in update_priors.items(): 
+                self.parameter_info.at[key, 'prior'] = val 
         
         len_per_xi = len(self.s_slice)
         total_len = len(self.xi_fid)
@@ -148,24 +170,45 @@ class PNGmodel:
         self.N_obs_vec_masked = len(self.masked['xi_fid'])
         
         attrs_to_delete = ['mask', 'term_masks', 'masked', 'N_obs_vec_masked', 'exclude']
-        print('Observable will have {} pts'.format(len(self.masked['xi_fid'])))
-        ######################################################
-        
-        print()
-        
-        ######################################################
-        print('Exploring parameter space...')
-        # turn off mutliprocessing for windows
-        if platform == 'win32':
-            multiprocessing = False
-        
-        self.nwalkers = nwalkers
-        self.nsteps = nsteps
 
         missing_attributes = self.get_missing_attributes()
         attrs_to_delete += missing_attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
+            
+        print('Observable will have {} pts'.format(len(self.masked['xi_fid'])))
+        ######################################################
+        
+        print()
+
+        #####################################################
+        ### Define the log prior function:
+        def compile_log_prior(priors):
+            # Separate the two prior types at compile time
+            gaussian_terms = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "gauss"]
+            uniform_terms  = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "flat"]
+        
+            def log_prior(params):
+                # Uniform bounds check first — cheapest early exit
+                for i, low, high in uniform_terms:
+                    if not (low <= params[i] <= high):
+                        return -np.inf
+        
+                # Gaussian terms inlined — no function call overhead
+                total = 0.0
+                for i, mean, sigma in gaussian_terms:
+                    d = ((params[i] - mean) / sigma)**2
+                    total -= d
+        
+                return total
+            return log_prior
+        priors = list(self.parameter_info['prior'])
+        self.log_prior_base_pars = compile_log_prior(priors)
+        ######################################################
+        print('Exploring parameter space...')
+        # turn off mutliprocessing for windows
+        if platform == 'win32':
+            multiprocessing = False
         
         if min_type == 'pseudo':
             if not hasattr(self, 'params_toy'):
@@ -187,6 +230,7 @@ class PNGmodel:
         # start_pos[:,1] = (self.poi_hard_lims[1][1]+self.poi_hard_lims[1][0])/2.+1e-5*np.random.randn(self.nwalkers)
 
         if multiprocessing:
+            os.environ["OMP_NUM_THREADS"] = "1"
             with Pool(8) as pool:
             # Define and run the sampler chain
                 self.sampler = emcee.EnsembleSampler(self.nwalkers,
@@ -194,6 +238,7 @@ class PNGmodel:
                                                      self.log_probability_base_pars,
                                                      pool=pool)
                 self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+            _ = os.environ.pop("OMP_NUM_THREADS", None)
         else:
             self.sampler = emcee.EnsembleSampler(self.nwalkers,
                                                      self.num_params,
@@ -257,7 +302,7 @@ class PNGmodel:
     def save_meta(self, fname_chain):
         fname_meta = chain_meta_fname(fname_chain)
         meta = {}
-        meta['parameter_defaults'] = self.parameter_defaults.to_dict(orient='index')
+        meta['parameter_info'] = self.parameter_info.to_dict(orient='index')
         meta['fid_corr_filename'] = self.fid_corr_filename
         meta['cov_filename'] = self.cov_file
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
