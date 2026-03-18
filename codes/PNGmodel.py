@@ -95,18 +95,10 @@ class PNGmodel:
 
     def xi_modded_base_pars(self, params):
         return self.math.xi_modded_base_pars(self, params)
-    
-    # def util_chi2_base_pars(self, params):
-    #     return self.math.util_chi2_base_pars(self, params)
-
-    # def log_probability_base_pars(self, params):
-    #     return self.math.log_probability_base_pars(self, params)
 
     def util_chi2_base_pars(self, params):
         # Defines chi2 given data and params
         exp = self.xi_modded_base_pars(params)
-        # cov_inv = np.linalg.inv(mod.cov_mat)
-        # return -np.matmul(np.matmul(cov_inv,(mod.obs-exp)),(mod.obs-exp))
         return -np.matmul(np.matmul(self.masked['cov_inv'],(self.obs-exp)),(self.obs-exp))
 
     def log_probability_base_pars(self, params):
@@ -117,18 +109,76 @@ class PNGmodel:
         return 0.5*(lp + self.util_chi2_base_pars(params))
     
     def run_sampling(self, 
-                     min_type, # min_type = 'data' or 'pseudo'
-                     fname_chain, # filepath for output chain data
-                     data_obs=None, # Filepath for input observation, necessary if min_type=='data'
-                     s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale cuts used to decide what to mask in the model
-                     nwalkers=75, nsteps=20000, # model attributes
+                     min_type, 
+                     fname_chain, 
+                     data_obs=None, params_toy=None,
+                     s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale/term cuts used to decide what to mask in the model
+                     nwalkers=75, nsteps=20000, burn_in_steps=500, thinner=1, multiprocessing=False, # model attributes
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
-                     multiprocessing=False,
-                     burn_in_steps=500, thinner=1,
                      update_priors=None,
                      **kwargs):
+        """
+        Runs the MCMC parameter estimation and saves the resulting chains along with their metadata.
+    
+        Parameters
+        ----------
+        min_type : str
+            A string defining where your observation vector comes from. Either 'data' or 'pseudo'. 
+            If 'data' is chosen then the 'data_obs' argument must also be provided. In this case the
+            observation vector is taken to be the data stored in the 'data_obs' file. If 'pseudo' is 
+            chosen, then the 'params_toy' argument must also be provided. In this case the observation
+            vector is constructed by passing 'params_toy' to self.xi_modded_base_pars.
+        fname_chain : str
+            Full filepath/filename where the output chain will be saved. 
+        data_obs : str
+            Full filepath to data (in fits format) that will be used as the observation vector. 
+        params_toy : array
+            Array holding the parameters of interest to be used to construct the observation vector. 
+        s_min : int or float
+            Minimum scale to be used in the model.
+        s_max : int or float
+            Maximum scale to be used in the model.
+        s_cutwindow : array of integers or floats
+            Length-two array representing a range of scales to be masked, e.g. [90,130] for masking BAO.
+        exclude : array of strings
+            Array of strings corresponding to terms in your data vector to be masked. For example, if
+            your data vector has the terms xi0, xi2, xi4, setting exclude=['xi4'] masks the 
+            hexadecapole everywhere within the model.
+        nwalkers : int
+            Number of walkers used in the MCMC. See: https://emcee.readthedocs.io/en/stable/user/sampler/
+        nsteps : int
+            Number of steps used in the MCMC. See: https://emcee.readthedocs.io/en/stable/user/sampler/
+        burn_in_steps : int
+            Number of steps to discard when saving getting chain.
+            See: https://emcee.readthedocs.io/en/stable/user/sampler/
+        thinner : int
+            Number used to thin the chain. See: https://emcee.readthedocs.io/en/stable/user/sampler/
+        multiprocessing : bool
+            Boolean determining whether the emcee.EnsembleSampler is parallelized using Pool(). Under
+            construction and defaults to False. This emcee feature is incompatible with windows 
+            and so if the system used to run this code is using windows, it defaults to False.
+        plt_out : bool
+            Boolean to decide if a plot will be made showing all the steps taken by the walkers. If 
+            'savefig' is set to True but 'plt_out' is set to False, the figure will be plotted anyway. 
+        plt_color : str
+            String indicating the color of the paths taken by the walkers in the plot.
+        savefig : bool
+            Boolean to decide whether the walker plot figure is saved. 
+        fname_out : str
+            Full directory/filename where the walker plot figure will be saved. 
+        update_priors : None or dict
+            Used to update the priors for this MCMC run from their default values as they are defined in
+            the chosen PNGmodel's parameter_defaults. Default is None. If a dictionary is provided, the 
+            keys must be strings corresponding to the keys of the parameter_defaults dataframe. The values 
+            must be arrays corresponding to the values with which the chosen parameter's prior will be replaced.
+            For example, update_priors={'b1g':[1.90, 0.06, 'gauss']}
+        kwargs : dict
+            Used to add data that is necessary to run the model but not previously loaded. The values 
+            passed should correspond to those defined in the given MathModel's 'extra_parameters'.
+            Anything passed to kwargs will temporarily be stored as an instance attribute to the PNGmodel,
+            and then subsequently removed from the instance's attributes at the end of this function. 
+        """
         
-        # defining mask
         self.exclude = exclude
         self.s_min = s_min
         self.s_max = s_max
@@ -138,22 +188,27 @@ class PNGmodel:
         self.nwalkers = nwalkers
         self.nsteps = nsteps
         self.parameter_info = self.parameter_defaults.copy()
+        self.params_toy = params_toy
+        self.data_obs = data_obs
 
-        # Update parameter_info with new priors if applicable
+        #####################################################
+        ### Update the priors if applicable
+        #####################################################
         if update_priors is not None: 
             # Must be a dict with keys given by the parameter labels of parameter_defaults
             # and values with what the defaults will be replaced by
             # For example update_priors = {'b1g':(2, 0.03, 'gauss')}
             for key,val in update_priors.items(): 
                 self.parameter_info.at[key, 'prior'] = val 
-        
-        len_per_xi = len(self.s_slice)
-        total_len = len(self.xi_fid)
 
+        #####################################################
+        ### Define Masks for this run of the model
+        #####################################################
+        len_per_term = len(self.s_slice)
         self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
         for i,term in enumerate(self.terms):
-            self.term_masks[term][i*len_per_xi:(i+1)*len_per_xi] = True
-            
+            self.term_masks[term][i*len_per_term:(i+1)*len_per_term] = True
+
         self.mask = self.s_mask.copy()
         for term in exclude:
             self.mask = np.logical_and(self.mask, ~self.term_masks[term])
@@ -166,23 +221,22 @@ class PNGmodel:
         self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
         for tm in arrays_to_mask:
             self.masked[tm] = getattr(self, tm)[self.mask]
-            
         self.N_obs_vec_masked = len(self.masked['xi_fid'])
+        print('Observable will have {} pts'.format(self.N_obs_vec_masked))
         
         attrs_to_delete = ['mask', 'term_masks', 'masked', 'N_obs_vec_masked', 'exclude']
 
+        #####################################################
+        ### Load any missing attributes
+        #####################################################
         missing_attributes = self.get_missing_attributes()
         attrs_to_delete += missing_attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
-            
-        print('Observable will have {} pts'.format(len(self.masked['xi_fid'])))
-        ######################################################
-        
-        print()
-
+                    
         #####################################################
         ### Define the log prior function:
+        #####################################################
         def compile_log_prior(priors):
             # Separate the two prior types at compile time
             gaussian_terms = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "gauss"]
@@ -203,32 +257,28 @@ class PNGmodel:
                 return total
             return log_prior
         priors = list(self.parameter_info['prior'])
-        self.log_prior_base_pars = compile_log_prior(priors)
-        ######################################################
-        print('Exploring parameter space...')
-        # turn off mutliprocessing for windows
-        if platform == 'win32':
-            multiprocessing = False
-        
+        self.log_prior_base_pars = compile_log_prior(priors)        
+
+        #####################################################
+        ### Define the observation vector
+        #####################################################
         if min_type == 'pseudo':
-            if not hasattr(self, 'params_toy'):
-                raise Exception(""" If min_type=='pseudo' you must pass toy parameters in the kwargs
-                                    Check which parameters are needed with the show_parameters() method! """ )
             self.obs = self.xi_modded_base_pars(self.params_toy)
         elif min_type == 'data':
-            self.obs, _ = obs_unwrapper(data_obs)
+            self.obs, _ = obs_unwrapper(self.data_obs)
             self.obs = self.obs[self.mask]
             
         attrs_to_delete.append(self.obs)
 
-        # Pull initial values from parameter defaults
-        start_pos = np.asarray(self.parameter_defaults['init'])+1e-4*np.random.randn(
-                               self.nwalkers, self.num_params)
-
-        # The following line is just for fixing the bias 
-        # WILL DELETE AT SOME POINT
-        # start_pos[:,1] = (self.poi_hard_lims[1][1]+self.poi_hard_lims[1][0])/2.+1e-5*np.random.randn(self.nwalkers)
-
+        #####################################################
+        ### Run the MCMC 
+        #####################################################
+        if platform == 'win32':# turn off mutliprocessing for windows
+                multiprocessing = False
+            
+        start_pos = np.asarray(self.parameter_info['init'])+1e-4*np.random.randn(
+                                   self.nwalkers, self.num_params)
+        print('Exploring parameter space...')
         if multiprocessing:
             os.environ["OMP_NUM_THREADS"] = "1"
             with Pool(8) as pool:
@@ -238,66 +288,62 @@ class PNGmodel:
                                                      self.log_probability_base_pars,
                                                      pool=pool)
                 self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
-            _ = os.environ.pop("OMP_NUM_THREADS", None)
+            _ = os.environ.pop("OMP_NUM_THREADS")
         else:
             self.sampler = emcee.EnsembleSampler(self.nwalkers,
                                                      self.num_params,
                                                      self.log_probability_base_pars)
             self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
+        attrs_to_delete.append('sampler')
 
+        #####################################################
+        ### Plotting/saving walker plots
+        #####################################################
         if savefig:
-            if not plt_out:
-                print(f'savefig = {savefig} but plt_out = {plt_out}!')
+            plt_out = True # override plt_out=False if savefig is set.
             if fname_out is None:
-                print(f'savefig = {savefig} but fname_out = {fname_out}!')
-        
+                print(f'savefig = {savefig} but fname_out = None! Figure will not be saved.')
         if plt_out == True:
-            # Plot walker output
-            plt.rc('xtick', labelsize = 12)
-            plt.rc('ytick', labelsize = 12)
-            plt.rc('lines', lw = 1)
-            fig, axes = plt.subplots(self.num_params, figsize=(12, 14), sharex=True)
-            plt_samples = self.sampler.get_chain()
-            for i in range(self.num_params):
-                ax = axes[i]
-                ax.plot(plt_samples[:, :, i], plt_color, alpha=0.3)
-                ax.set_xlim(0, len(plt_samples))
-                ax.set_ylabel(self.parameter_defaults['plot_label'].iloc[i])
-                ax.yaxis.set_label_coords(-0.1, 0.5)
-            axes[-1].set_xlabel("step number");
-            if savefig:
-                plt.savefig(fname_out)
+            self.plot_walkers(plt_color=plt_color, savefig=savefig, fname_out=fname_out)
 
+        #####################################################
+        ### Get and display parameter estimates
+        #####################################################
         burn_samples = self.sampler.get_chain(
             discard=burn_in_steps,thin=thinner,flat=True)
         np.savetxt(fname_chain, burn_samples)
         self.qnts = get_ints(burn_samples)
-        
         for i in range(self.num_params):
             param = self.parameters[i]
             print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
                   str(np.round(self.qnts[i][0],decimals=2))+' - '+
                   str(np.round(self.qnts[i][2],decimals=2)))
             
-        # save Meta File:
+        #####################################################
+        ### Save Meta file and delete temporary attributes
+        #####################################################
         self.save_meta(fname_chain)
-
-        missing_attributes.append('qnts')
-        for attr in missing_attributes:
+        attrs_to_delete.append('qnts')
+        for attr in attrs_to_delete:
             delattr(self, attr)
         return
 
-    def get_missing_attributes(self):
-        return sorted(self.math.extra_parameters - set(vars(self)))
-    
-    def show_missing_attributes(self):
-        missing_attributes = self.get_missing_attributes()
-        print("Must pass the following as a dictionary to 'test_model_base_pars':")
-        print( missing_attributes )
-
-    def show_parameters(self):
-        print('This MathModel needs the following parameters:')
-        print(self.parameters)
+    def plot_walkers(self, plt_color='green', savefig=False, fname_out=None):
+        # Plot walker output
+        plt.rc('xtick', labelsize = 12)
+        plt.rc('ytick', labelsize = 12)
+        plt.rc('lines', lw = 1)
+        fig, axes = plt.subplots(self.num_params, figsize=(12, 14), sharex=True)
+        plt_samples = self.sampler.get_chain()
+        for i in range(self.num_params):
+            ax = axes[i]
+            ax.plot(plt_samples[:, :, i], plt_color, alpha=0.3)
+            ax.set_xlim(0, len(plt_samples))
+            ax.set_ylabel(self.parameter_info['plot_label'].iloc[i])
+            ax.yaxis.set_label_coords(-0.1, 0.5)
+        axes[-1].set_xlabel("step number");
+        if savefig:
+            plt.savefig(fname_out)
 
     def save_meta(self, fname_chain):
         fname_meta = chain_meta_fname(fname_chain)
@@ -312,3 +358,15 @@ class PNGmodel:
         # meta['sys_pkg_sets'] = self.sys_pkg_sets
         with open(fname_meta, 'w') as f:
             yaml.dump(meta, f, sort_keys=False)
+
+    def get_missing_attributes(self):
+        return sorted(self.math.extra_parameters - set(vars(self)))
+    
+    def show_missing_attributes(self):
+        missing_attributes = self.get_missing_attributes()
+        print("Must pass the following as a dictionary to 'test_model_base_pars':")
+        print( missing_attributes )
+
+    def show_parameters(self):
+        print('This MathModel needs the following parameters:')
+        print(self.parameters)
