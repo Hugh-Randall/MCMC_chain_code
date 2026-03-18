@@ -19,7 +19,7 @@ plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
 
 class PNGmodel:
          
-    def __init__(self, fid_corr, math_model):
+    def __init__(self, fid_corr, math_model, terms=None):
         # Initializes the model based on a desired s_min/s_max
         print('Initializing...')
         # Set initial params
@@ -31,7 +31,11 @@ class PNGmodel:
         self.num_params = len(self.parameter_defaults)
         self.parameters = list(self.parameter_defaults.index)
         
-        self.xi_fid, self.terms = obs_unwrapper(self.fid_corr_filename)
+        self.xi_fid, fid_terms = obs_unwrapper(self.fid_corr_filename)
+        if terms == None:
+            self.terms = fid_terms
+
+        self.parameterization_files = []
         self.arrays_to_mask = ['xi_fid']
         self.N_obs_vec = len(self.xi_fid)
         return
@@ -39,12 +43,28 @@ class PNGmodel:
     def load_PNG_model(self, files):
         # Loads c1_n and c2_n coefficients
         print('Loading PNG model...')
-        # c1, c2 = concatenate_quadfits(files)
-        # self.c1 = c1[self.mask]
-        # self.c2 = c2[self.mask]
-        df = reorder_fits(pd.read_csv(files), self.terms)
-        self.c1, self.c2 = np.asarray(df['c1']), np.asarray(df['c2'])
+        c1, c2 = concatenate_quadfits(files)
+        self.c1 = c1
+        self.c2 = c2
+        # df = reorder_fits(pd.read_csv(files), self.terms)
+        # self.c1, self.c2 = np.asarray(df['c1']), np.asarray(df['c2'])
         self.arrays_to_mask += ['c1','c2']
+        return
+
+    def load_fits(self, file, mapper=None):
+        print('Loading model parameters...')
+        df = reorder_fits(pd.read_csv(file), self.terms)
+        cols = list(df.columns)
+        to_remove = ['term', 's']
+        cols = [x for x in cols if x not in to_remove]
+        
+        if not mapper:
+            mapper = {col:col for col in cols}
+        
+        for col in cols:
+            setattr(self, mapper[col], np.asarray(df[col]))
+            self.arrays_to_mask.append(mapper[col])
+        self.parameterization_files.append(file)
         return
     
     def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
@@ -64,24 +84,24 @@ class PNGmodel:
     def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
         print('Loading systematic weight variation...')
         self.sys_pkg_sets = [pkg_set1, pkg_set2, pkg_set3]
-        # self.pvar_par_B1, self.pvar_par_A1  = [x[self.mask] for x in concatenate_quadfits(pkg_set1)]
-        # self.pvar_par_B2, self.pvar_par_A2  = [x[self.mask] for x in concatenate_quadfits(pkg_set2)]
-        # self.pvar_par_B3, self.pvar_par_A3  = [x[self.mask] for x in concatenate_quadfits(pkg_set3)]
+        self.pvar_par_B1, self.pvar_par_A1  = [x for x in concatenate_quadfits(pkg_set1)]
+        self.pvar_par_B2, self.pvar_par_A2  = [x for x in concatenate_quadfits(pkg_set2)]
+        self.pvar_par_B3, self.pvar_par_A3  = [x for x in concatenate_quadfits(pkg_set3)]
         
-        df1 = reorder_fits(pd.read_csv(pkg_set1), self.terms)
-        self.pvar_par_B1, self.pvar_par_A1 = np.asarray(df1['c1']), np.asarray(df1['c2'])
+        # df1 = reorder_fits(pd.read_csv(pkg_set1), self.terms)
+        # self.pvar_par_B1, self.pvar_par_A1 = np.asarray(df1['c1']), np.asarray(df1['c2'])
 
-        df2 = reorder_fits(pd.read_csv(pkg_set2), self.terms)
-        self.pvar_par_B2, self.pvar_par_A2 = np.asarray(df2['c1']), np.asarray(df2['c2'])
+        # df2 = reorder_fits(pd.read_csv(pkg_set2), self.terms)
+        # self.pvar_par_B2, self.pvar_par_A2 = np.asarray(df2['c1']), np.asarray(df2['c2'])
 
-        df3 = reorder_fits(pd.read_csv(pkg_set3), self.terms)
-        self.pvar_par_B3, self.pvar_par_A3 = np.asarray(df3['c1']), np.asarray(df3['c2'])
+        # df3 = reorder_fits(pd.read_csv(pkg_set3), self.terms)
+        # self.pvar_par_B3, self.pvar_par_A3 = np.asarray(df3['c1']), np.asarray(df3['c2'])
 
         self.arrays_to_mask += ['pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
         return
         
     def load_joint_fits(self, pkg_set):
-        raise Exception( 'This functionality is currently under construction!' )
+        raise Exception( 'This functionality is currently under construction!')
         # print('Loading systematic weight variation...')
         # # total_fits = concatenate_fits(pkg_set)[self.mask]
         # total_fits = concatenate_fits(pkg_set)[self.mask]
@@ -268,7 +288,7 @@ class PNGmodel:
             self.obs, _ = obs_unwrapper(self.data_obs)
             self.obs = self.obs[self.mask]
             
-        attrs_to_delete.append(self.obs)
+        attrs_to_delete.append('obs')
 
         #####################################################
         ### Run the MCMC 
@@ -324,6 +344,7 @@ class PNGmodel:
         #####################################################
         self.save_meta(fname_chain)
         attrs_to_delete.append('qnts')
+        print(attrs_to_delete)
         for attr in attrs_to_delete:
             delattr(self, attr)
         return
@@ -351,6 +372,7 @@ class PNGmodel:
         meta['parameter_info'] = self.parameter_info.to_dict(orient='index')
         meta['fid_corr_filename'] = self.fid_corr_filename
         meta['cov_filename'] = self.cov_file
+        meta['parameterization_files'] = self.parameterization_files
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
         meta['math_model'] = self.math.__class__.__name__
         meta['qnts'] = [[float(q) for q in tup] for tup in self.qnts]

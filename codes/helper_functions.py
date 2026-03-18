@@ -28,6 +28,7 @@ def obs_unwrapper(pkg_loc):
             pkg = hdul[1].data.copy()
     # pkg = Table.read(pkg_loc)
     col_names = pkg.columns.names
+    
     terms = col_names.copy()
     terms.remove('s')
 
@@ -80,9 +81,7 @@ def concatenate_fits(files):
     return df_out.to_numpy()
 
 def reorder_fits(df, terms):
-    temp = df.sort_values(by='s')
-    temp = df.sort_values(by='term', key=lambda column: column.map(lambda e: terms.index(e)))
-    return temp
+    return df.sort_values(by=['term','s'])
 
 def chain_meta_fname(fname):
     return fname.split('.txt')[0]+'.meta.yaml'
