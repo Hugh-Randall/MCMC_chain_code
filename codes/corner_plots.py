@@ -29,9 +29,50 @@ colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 
 def make_corner(chains, params=None,
                 savefig=False, figdir='./figures/', outfile=None, 
-                usecolors=False, figsize=None, title=None, ksys_prior=True,
+                usecolors=False, figsize=None, title=None, ksys_prior=False,
                 labelfsize=None, legendfsize=None, return_fig=False):
-    
+    """
+    Makes a corner plot for an arbitrary number of parameters given a list of chain objects. 
+    It automatically decides the number of axes given the number of parameters to be plotted
+    and handles indexing under the hood. Font sizes and spacing are automatically scaled to 
+    look good based on the number of parameters as well as the number of chains, though many
+    things can still be adjusted manually with one of the optional arguments. 
+
+    Parameters
+    ----------
+    chains : list
+        List of initialized chain objects. They must hold their array data (no lazy_load). 
+    params : list
+        List of strings used to define which POIs will be plotted. If not specified, it will
+        plot all possible parameters by default. The names of the parameters given must match 
+        what are used in the MathModel.parameter_defaults. You can use chain.show_params()
+        to print the parameter options.
+    savefig : bool
+        If True the figure will be saved. In this case, 'outfile' must be specified. Defaults to False.
+    figdir : str
+        String specifying the output directory of the figure if it will be saved. Defaults to './figures/'
+    outfile : str
+        Output filename of the figure if it is saved. Must be specified if 'savefig' is set to True.
+    usecolors : bool
+        If True, the chain objects must have a color specified, and those colors will be used when plotting.
+        If False, colors are assigned according to the order of the chain objects and the order in
+        '/codes/config/colors.yaml'.
+    figsize : int
+        Can be specified to manually set figure size. By default, figure size is set automatically.
+    title : str
+        The title that will be printed at the top of the figure. If it is too long or too many chains
+        are plotted at the same time, then the title may overlap with quoted measurements. For now the only 
+        work-around is to pad manually pad the title with whitespace. 
+    ksys_prior : bool
+        Deprecated. 
+    labelfsize : int
+        Value used to define the font size of the measurments displayed over the top axes. By default
+        the size is scaled automatically.
+    legendfsize : int
+        Value used to define the font size of the legend. By default the size is scaled automatically.
+    return_fig : bool
+        If True, the figure object will be returned and further plot elements may be added. Default is False.
+    """
     parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_defaults, orient='index')
     parameter_defaults_keys = list(parameter_defaults.index)
 
@@ -73,9 +114,9 @@ def make_corner(chains, params=None,
     if labelfsize == None:
         fsize_plot = (15) * 0.95**len(params) 
         # fsize_plot = (15) / (num_chains**0.4)
-
     else: 
         fsize_plot = labelfsize
+        
     if legendfsize == None:
         fsize_legend = (15-1*len(chains))#*(5./len(params))
         # fsize_legend = (15) / (num_chains**0.4)

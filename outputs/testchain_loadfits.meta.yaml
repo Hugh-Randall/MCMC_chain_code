@@ -1,0 +1,123 @@
+parameter_info:
+  fNL:
+    init: 0
+    prior:
+    - -250
+    - 250
+    - flat
+    plot_label: $f_{NL}$
+    num_decimals: 0
+    unit: ''
+  b1g:
+    init: 1
+    prior:
+    - 0.5
+    - 4
+    - flat
+    plot_label: $b_{1g}$
+    num_decimals: 2
+    unit: ''
+  b1h:
+    init: 1
+    prior:
+    - 1.94
+    - 0.04
+    - gauss
+    plot_label: $b_{1h}$
+    num_decimals: 2
+    unit: ''
+  b1gfid:
+    init: 1
+    prior:
+    - 1.94
+    - 0.04
+    - gauss
+    plot_label: $b_{1g}^{fid}$
+    num_decimals: 2
+    unit: ''
+  ph:
+    init: 1
+    prior:
+    - 1
+    - 0.1
+    - gauss
+    plot_label: $p_h$
+    num_decimals: 1
+    unit: ''
+  pg:
+    init: 1
+    prior:
+    - 1
+    - 0.1
+    - gauss
+    plot_label: $p_g$
+    num_decimals: 1
+    unit: ''
+  KsysSGC:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{SGC}}$
+    num_decimals: 1
+    unit: \%
+  KsysDEC:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{DEC}}$
+    num_decimals: 1
+    unit: \%
+  KsysMZLS:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{MZLS}}$
+    num_decimals: 1
+    unit: \%
+fid_corr_filename: ./inputs/abacus_averaged_fiducial_wts_fixed.fits
+cov_filename: ./inputs/EZ_mock_covariance_matrix.npy
+parameterization_files:
+- ./inputs/quadfits_LRG_FastPM_Y3_fnl.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
+scale:
+  s_min: null
+  s_max: null
+  s_cutwindow: null
+math_model: Y1
+qnts:
+- - 12.697595001612584
+  - 5.914049526947579
+  - 12.583126388927136
+- - 0.05057507471033662
+  - 1.8680899180540882
+  - 0.05115765371400971
+- - 0.038847530326297175
+  - 1.942780886353982
+  - 0.041010112640194496
+- - 0.03986795552782896
+  - 1.9389104838202433
+  - 0.03852848272051013
+- - 0.09618411938567073
+  - 0.9868391725885195
+  - 0.0982776041723763
+- - 0.10081397406965764
+  - 1.0106975073417654
+  - 0.09818717484912098
+- - 9.962736368645984
+  - 0.8499408784659721
+  - 10.069506508636476
+- - 9.522283608992277
+  - 1.0367627359288247
+  - 10.02642913938059
+- - 9.917675897477578
+  - -0.1720705650418426
+  - 9.55350794278587
+exclude: []

@@ -20,6 +20,24 @@ plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
 class PNGmodel:
          
     def __init__(self, fid_corr, math_model, terms=None):
+        """
+        Initializes a PNGmodel object with which we can run MCMC parameter 
+        estimation on various sets of data. 
+    
+        Parameters
+        ----------
+        fid_corr : str
+            Full path/filename to file that stores the fiducial observation vector 
+            describing our model. It is assumed to be a 2d fits table with one column
+            being the scale, s, and other columns being the terms in the observation vector.
+            This format will be changed soon.
+        math_model : MathModel-like object
+            An instance of any class from the MathModel.py file. This MathModel is how 
+            the PNGmodel's xi_modded_base_pars will be defined to build the likelihood function.
+        terms : None
+            Under construction. DO NOT USE.
+        """
+        
         # Initializes the model based on a desired s_min/s_max
         print('Initializing...')
         # Set initial params
@@ -40,18 +58,32 @@ class PNGmodel:
         self.N_obs_vec = len(self.xi_fid)
         return
 
-    def load_PNG_model(self, files):
-        # Loads c1_n and c2_n coefficients
-        print('Loading PNG model...')
-        c1, c2 = concatenate_quadfits(files)
-        self.c1 = c1
-        self.c2 = c2
-        # df = reorder_fits(pd.read_csv(files), self.terms)
-        # self.c1, self.c2 = np.asarray(df['c1']), np.asarray(df['c2'])
-        self.arrays_to_mask += ['c1','c2']
-        return
-
     def load_fits(self, file, mapper=None):
+        """
+        Loads coefficients that define our parameterized model. This can be used to load 
+        png coefficients as well as systematics coefficients. It defined the columns of the
+        file to be PNGmodel attributes that will be called within the likelihood. 
+        The names of the columns and/or the mapper dictionary solely determines how the attributes
+        are named. The only thing that matters is that the attributes are ultimately named 
+        in a way that is consistent with how they are called within your chosen MathModel.
+    
+        Parameters
+        ----------
+        file : str
+            Full path/filename to csv file that stores the coefficients that will be called in the 
+            likelihood function as defined by the MathModel. There are two necessary columns that the 
+            file MUST have: ['s', 'term']. 's' corresponds to the scale (e.g. 50) and 'term' corresponds
+            to the term of your observation vector (e.g. 'xi0', 'xi2', etc.). All other columns are 
+            coefficients for the given (s,term) combination. If 'mapper' is not specified, then the columns
+            will be stored as model attributes with names given by the column names. For example, column
+            'c1' will be stored as PNGmodel.c1, so be careful that your naming conventions are self-consistent.
+        mapper : dict, optional 
+            Dictionary used to change what names the columns of 'file' are saved under when they are made
+            into PNGmodel attributes. This is useful when the columns of your table do not match what they are 
+            called in MathModel.xi_modded_base_pars. For example, if you are loading systematic fits files whose 
+            linear and quadratic fits columns are labeled c1 and c2 respectively, 
+            use mapper={'c1': 'pvar_par_B1', 'c2': 'pvar_par_A1'}, to make PNGmodel.pvar_par_B2 = file['c1'].
+        """
         print('Loading model parameters...')
         df = reorder_fits(pd.read_csv(file), self.terms)
         cols = list(df.columns)
@@ -68,49 +100,23 @@ class PNGmodel:
         return
     
     def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
-        # NOTICE - This is the only part of the model that is assumed to be pre-concatenated.
-        # You MUST be sure that the order of the covariance matrix indices matches the order of self.terms!
-        ...
-        # possibly change this so that it could be computed on the fly like Zack had it originally
-        ...
-        # A function to load the model covariance matrix
-        # Takes from the fiducial ensemble
+        """
+        Loads the covariance matrix as a PNGmodel object. Notice! It does not compute the 
+        covariance matrix so you must be sure that the order of the indices of the covariance 
+        matrix matches the order of the indices in all other parts of the model (like in the 
+        fiducial case, coefficients, etc.).
+    
+        Parameters
+        ----------
+        cov_pkg : str
+            Full path/filename to the npy file that stores the covariance matrix.
+        cov_rescale_factor : float, optional
+            Float used to rescale the covariance matrix for quick comparisons between different
+            survey volumes.
+        """
         print('Loading covariance matrix...')
         self.cov_file = cov_pkg
-        # self.cov_mat = cov_rescale_factor*np.load(self.cov_file)[self.mask][:, self.mask]
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)
-        return
-    
-    def load_photo_vary_fits(self, pkg_set1, pkg_set2, pkg_set3):
-        print('Loading systematic weight variation...')
-        self.sys_pkg_sets = [pkg_set1, pkg_set2, pkg_set3]
-        self.pvar_par_B1, self.pvar_par_A1  = [x for x in concatenate_quadfits(pkg_set1)]
-        self.pvar_par_B2, self.pvar_par_A2  = [x for x in concatenate_quadfits(pkg_set2)]
-        self.pvar_par_B3, self.pvar_par_A3  = [x for x in concatenate_quadfits(pkg_set3)]
-        
-        # df1 = reorder_fits(pd.read_csv(pkg_set1), self.terms)
-        # self.pvar_par_B1, self.pvar_par_A1 = np.asarray(df1['c1']), np.asarray(df1['c2'])
-
-        # df2 = reorder_fits(pd.read_csv(pkg_set2), self.terms)
-        # self.pvar_par_B2, self.pvar_par_A2 = np.asarray(df2['c1']), np.asarray(df2['c2'])
-
-        # df3 = reorder_fits(pd.read_csv(pkg_set3), self.terms)
-        # self.pvar_par_B3, self.pvar_par_A3 = np.asarray(df3['c1']), np.asarray(df3['c2'])
-
-        self.arrays_to_mask += ['pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
-        return
-        
-    def load_joint_fits(self, pkg_set):
-        raise Exception( 'This functionality is currently under construction!')
-        # print('Loading systematic weight variation...')
-        # # total_fits = concatenate_fits(pkg_set)[self.mask]
-        # total_fits = concatenate_fits(pkg_set)[self.mask]
-        
-        # self.c2, self.c1 = total_fits[:,0], total_fits[:,1]
-        # self.pvar_par_A1, self.pvar_par_B1 = total_fits[:,2], total_fits[:,3]
-        # self.pvar_par_A2, self.pvar_par_B2 = total_fits[:,4], total_fits[:,5]
-        # self.pvar_par_A3, self.pvar_par_B3 = total_fits[:,6], total_fits[:,7]
-        self.arrays_to_mask += ['c1','c2', 'pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
         return
 
     def xi_modded_base_pars(self, params):
@@ -150,49 +156,49 @@ class PNGmodel:
             vector is constructed by passing 'params_toy' to self.xi_modded_base_pars.
         fname_chain : str
             Full filepath/filename where the output chain will be saved. 
-        data_obs : str
+        data_obs : str, optional
             Full filepath to data (in fits format) that will be used as the observation vector. 
-        params_toy : array
+        params_toy : array, optional
             Array holding the parameters of interest to be used to construct the observation vector. 
-        s_min : int or float
+        s_min : int or float, optional
             Minimum scale to be used in the model.
-        s_max : int or float
+        s_max : int or float, optional
             Maximum scale to be used in the model.
-        s_cutwindow : array of integers or floats
+        s_cutwindow : array of integers or floats, optional
             Length-two array representing a range of scales to be masked, e.g. [90,130] for masking BAO.
-        exclude : array of strings
+        exclude : array of strings, optional
             Array of strings corresponding to terms in your data vector to be masked. For example, if
             your data vector has the terms xi0, xi2, xi4, setting exclude=['xi4'] masks the 
             hexadecapole everywhere within the model.
-        nwalkers : int
+        nwalkers : int, optional
             Number of walkers used in the MCMC. See: https://emcee.readthedocs.io/en/stable/user/sampler/
-        nsteps : int
+        nsteps : int, optional
             Number of steps used in the MCMC. See: https://emcee.readthedocs.io/en/stable/user/sampler/
-        burn_in_steps : int
+        burn_in_steps : int, optional
             Number of steps to discard when saving getting chain.
             See: https://emcee.readthedocs.io/en/stable/user/sampler/
-        thinner : int
+        thinner : int, optional
             Number used to thin the chain. See: https://emcee.readthedocs.io/en/stable/user/sampler/
-        multiprocessing : bool
+        multiprocessing : bool, optional
             Boolean determining whether the emcee.EnsembleSampler is parallelized using Pool(). Under
             construction and defaults to False. This emcee feature is incompatible with windows 
             and so if the system used to run this code is using windows, it defaults to False.
-        plt_out : bool
+        plt_out : bool, optional
             Boolean to decide if a plot will be made showing all the steps taken by the walkers. If 
             'savefig' is set to True but 'plt_out' is set to False, the figure will be plotted anyway. 
-        plt_color : str
+        plt_color : str, optional
             String indicating the color of the paths taken by the walkers in the plot.
-        savefig : bool
+        savefig : bool, optional
             Boolean to decide whether the walker plot figure is saved. 
-        fname_out : str
+        fname_out : str, optional
             Full directory/filename where the walker plot figure will be saved. 
-        update_priors : None or dict
+        update_priors : None or dict, optional
             Used to update the priors for this MCMC run from their default values as they are defined in
             the chosen PNGmodel's parameter_defaults. Default is None. If a dictionary is provided, the 
             keys must be strings corresponding to the keys of the parameter_defaults dataframe. The values 
             must be arrays corresponding to the values with which the chosen parameter's prior will be replaced.
             For example, update_priors={'b1g':[1.90, 0.06, 'gauss']}
-        kwargs : dict
+        kwargs : dict, optional
             Used to add data that is necessary to run the model but not previously loaded. The values 
             passed should correspond to those defined in the given MathModel's 'extra_parameters'.
             Anything passed to kwargs will temporarily be stored as an instance attribute to the PNGmodel,
@@ -350,6 +356,19 @@ class PNGmodel:
         return
 
     def plot_walkers(self, plt_color='green', savefig=False, fname_out=None):
+        """
+        Plots the steps taken by the walkers in the MCMC.
+    
+        Parameters
+        ----------
+        plt_color : str
+            Color of the lines to be plotted.
+        savefig : bool
+            Boolean defining whether the figure will be saved. If True fname_out MUST
+            be specified.
+        fname_out : str
+            Full output file path/name of figure if it is saved. 
+        """
         # Plot walker output
         plt.rc('xtick', labelsize = 12)
         plt.rc('ytick', labelsize = 12)
@@ -367,6 +386,17 @@ class PNGmodel:
             plt.savefig(fname_out)
 
     def save_meta(self, fname_chain):
+        """
+        Saves the metadata corresponding to a given run of PNGmodel.run_sampling. It 
+        creates a yaml file complementary to the chain array.
+    
+        Parameters
+        ----------
+        fname_chain : str
+            The filename that was passed to PNGmodel.run_sampling specifying the output file
+            for the chain array. It is used to define the name for the corresponding yaml
+            file that is saved when this function is called. 
+        """
         fname_meta = chain_meta_fname(fname_chain)
         meta = {}
         meta['parameter_info'] = self.parameter_info.to_dict(orient='index')

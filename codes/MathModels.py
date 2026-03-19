@@ -3,6 +3,34 @@ import pandas as pd
 from codes.helper_functions import *
 
 class MathModel:
+    """
+    Exemplary class showing the necessary elements of a MathModel class. These classes
+    are used to define how a theoretical observation vector is defined and are passed
+    during initialization of a PNGmodel object. There are three necessary elements.
+
+    Elements
+    ----------
+    parameter_defaults : pandas dataframe 
+        dataframe defining the default values of the POIs, such as their init value for the 
+        MCMC, the string used to label them in plots, their priors, etc. A row MUST
+        be defined for every parameter of interest.
+    extra_parameters : set
+        A set of strings defining values that are necessary to computing the theoretical observation
+        vector but that change depending on the data used as an observation vector (e.g. effective z).
+        These values must be passed as **kwargs to PNGmodel.run_sampling each time it is called. 
+        They will be stored temporarily as PNGmodel instance attributes but will ultimately be deleted 
+        from the instance. These are stored long-term in the metadata file for each chain.
+    xi_modded_base_pars : staticmethod
+        Function defining the theoretical observation vector. It is defined at the vector-level and its
+        elements will depend on the particular terms in your vector (2pcf multipoles, moments, 3pcf, etc.).
+        Examples of functions meant for the 2pcf multipoles are given below. 
+    """
+    
+    parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
+    parameter_defaults = parameter_defaults.set_index('key')
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+
+    extra_parameters = {'z_eff'}
     @staticmethod
     def xi_modded_base_pars(mod, params):
         raise NotImplementedError
@@ -129,5 +157,6 @@ class DR2:
         fid_term = r_fac_fid*(mod.xi_fid)
         PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
         sys_term = r_fac_fid*((mod.pvar_par_A1*Psys1**2+mod.pvar_par_B1*Psys1) +\
-                              (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) + (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
+                              (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) +\
+                              (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
         return fid_term + PNG_term + sys_term
