@@ -84,7 +84,7 @@ class PNGmodel:
             linear and quadratic fits columns are labeled c1 and c2 respectively, 
             use mapper={'c1': 'pvar_par_B1', 'c2': 'pvar_par_A1'}, to make PNGmodel.pvar_par_B2 = file['c1'].
         """
-        print('Loading model parameters...')
+        print('Loading model coefficients...')
         df = reorder_fits(pd.read_csv(file), self.terms)
         cols = list(df.columns)
         to_remove = ['term', 's']
@@ -92,9 +92,11 @@ class PNGmodel:
         
         if not mapper:
             mapper = {col:col for col in cols}
+
         
         for col in cols:
             setattr(self, mapper[col], np.asarray(df[col]))
+            print(f'\tadded attribute: {mapper[col]}')
             self.arrays_to_mask.append(mapper[col])
         self.parameterization_files.append(file)
         return
@@ -350,7 +352,6 @@ class PNGmodel:
         #####################################################
         self.save_meta(fname_chain)
         attrs_to_delete.append('qnts')
-        print(attrs_to_delete)
         for attr in attrs_to_delete:
             delattr(self, attr)
         return
@@ -416,7 +417,7 @@ class PNGmodel:
     
     def show_missing_attributes(self):
         missing_attributes = self.get_missing_attributes()
-        print("Must pass the following as a dictionary to 'test_model_base_pars':")
+        print("Must pass the following as a dictionary to 'run_sampling':")
         print( missing_attributes )
 
     def show_parameters(self):

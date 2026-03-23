@@ -42,38 +42,38 @@ def make_corner(chains, params=None,
     ----------
     chains : list
         List of initialized chain objects. They must hold their array data (no lazy_load). 
-    params : list
+    params : list, optional
         List of strings used to define which POIs will be plotted. If not specified, it will
         plot all possible parameters by default. The names of the parameters given must match 
         what are used in the MathModel.parameter_defaults. You can use chain.show_params()
         to print the parameter options.
-    savefig : bool
+    savefig : bool, optional
         If True the figure will be saved. In this case, 'outfile' must be specified. Defaults to False.
-    figdir : str
+    figdir : str, optional
         String specifying the output directory of the figure if it will be saved. Defaults to './figures/'
-    outfile : str
+    outfile : str, optional
         Output filename of the figure if it is saved. Must be specified if 'savefig' is set to True.
-    usecolors : bool
+    usecolors : bool, optional
         If True, the chain objects must have a color specified, and those colors will be used when plotting.
         If False, colors are assigned according to the order of the chain objects and the order in
         '/codes/config/colors.yaml'.
-    figsize : int
+    figsize : int, optional
         Can be specified to manually set figure size. By default, figure size is set automatically.
-    title : str
+    title : str, optional
         The title that will be printed at the top of the figure. If it is too long or too many chains
         are plotted at the same time, then the title may overlap with quoted measurements. For now the only 
         work-around is to pad manually pad the title with whitespace. 
-    ksys_prior : bool
+    ksys_prior : bool, optional
         Deprecated. 
-    labelfsize : int
+    labelfsize : int, optional
         Value used to define the font size of the measurments displayed over the top axes. By default
         the size is scaled automatically.
-    legendfsize : int
+    legendfsize : int, optional
         Value used to define the font size of the legend. By default the size is scaled automatically.
-    return_fig : bool
+    return_fig : bool, optional
         If True, the figure object will be returned and further plot elements may be added. Default is False.
     """
-    parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_defaults, orient='index')
+    parameter_defaults = pd.DataFrame.from_dict(chains[0].parameter_info, orient='index')
     parameter_defaults_keys = list(parameter_defaults.index)
 
     if params:
@@ -93,11 +93,19 @@ def make_corner(chains, params=None,
 
     chains_toplot = [c.chain_array[:,par_index] for c in chains]
     if usecolors:
-        ...
-        # Check that all chains have an assigned color, otherwise assign one to those without
-        ...
-
-        colors_keys = [c.color for c in chains]
+        allowed_colors = list(colors.keys())
+        chain_colors = [c.color for c in chains]
+        taken_colors = [x for x in chain_colors if x is not None]
+        leftover_colors = [x for x in allowed_colors if x not in taken_colors]
+        
+        colors_keys = []
+        i = 0
+        for c in chains:
+            if c.color is not None:
+                colors_keys.append(c.color)
+            else:
+                colors_keys.append(leftover_colors[i])
+                i += 1
     else:
         colors_keys = list(colors.keys())[:len(chains)]
     colors_gtc = [colors[key]['gtc_color'] for key in colors_keys]

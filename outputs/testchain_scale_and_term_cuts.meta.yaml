@@ -1,4 +1,4 @@
-parameter_defaults:
+parameter_info:
   fNL:
     init: 0
     prior:
@@ -82,6 +82,11 @@ parameter_defaults:
     unit: \%
 fid_corr_filename: ./inputs/abacus_averaged_fiducial_wts_fixed.fits
 cov_filename: ./inputs/EZ_mock_covariance_matrix.npy
+parameterization_files:
+- ./inputs/quadfits_LRG_FastPM_Y3_fnl.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
+- ./inputs/quadfits_LRG_abacus_Y1_Ksys_SGC.csv
 scale:
   s_min: null
   s_max: 380
@@ -89,3 +94,34 @@ scale:
   - 90
   - 130
 math_model: Y1
+qnts:
+- - 14.141882929228721
+  - 4.770016362741217
+  - 14.154623882912752
+- - 0.05342102688551753
+  - 1.8678078246649865
+  - 0.05328036580340534
+- - 0.0398832369141473
+  - 1.942129464007851
+  - 0.039621201560822605
+- - 0.03989375802840334
+  - 1.938862038270654
+  - 0.039818066575428634
+- - 0.09807546042945303
+  - 0.9887985202648458
+  - 0.09970591634241666
+- - 0.09985919334414639
+  - 1.0129339063532776
+  - 0.10074456602384274
+- - 9.749486225648635
+  - 0.6741160535474822
+  - 9.911309912756767
+- - 9.779926036828776
+  - 0.7414382031813069
+  - 9.914386597335893
+- - 9.873155163732555
+  - 0.562361788709933
+  - 9.82293473982022
+exclude:
+- xi2
+- xi4
