@@ -70,7 +70,7 @@ class Y1:
     
         r_fac_c1[mod.term_masks['xi0']] = ((b1g + f_g/3)*(b1g-pg)*(mod.Om_m0_g/Dz_g))/\
                                 ((b1h + f_h/3)*(b1h-ph)*(mod.Om_m0_h/Dz_h))
-        r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)**2)*(mod.Om_m0_g/Dz_g))/(((b1h-ph)**2)*(mod.Om_m0_h/Dz_h))
+        r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)*(mod.Om_m0_g/Dz_g))**2)/(((b1h-ph)*(mod.Om_m0_h/Dz_h))**2)
         r_fac_c1[mod.term_masks['xi2']] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_h*(b1h-ph)*(mod.Om_m0_h/Dz_h))
         
         #################################    
@@ -105,14 +105,14 @@ class DR2_nosys:
         r_fac_c1 = np.ones(len(mod.xi_fid))
         r_fac_c2 = np.ones(len(mod.xi_fid))
         
-        r_fac_fid[mod.xi0_cond] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
-        r_fac_fid[mod.xi2_cond] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
-        r_fac_fid[mod.xi4_cond] = (f_g/f_fid)**2
+        r_fac_fid[mod.term_masks['xi0']] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
+        r_fac_fid[mod.term_masks['xi2']] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
+        r_fac_fid[mod.term_masks['xi2']] = (f_g/f_fid)**2
     
-        r_fac_c1[mod.xi0_cond] = ((b1g + f_g/3)*(b1g-pg)*(mod.Om_m0_g/Dz_g))/\
+        r_fac_c1[mod.term_masks['xi0']] = ((b1g + f_g/3)*(b1g-pg)*(mod.Om_m0_g/Dz_g))/\
                                 ((b1g_fid + f_fid/3)*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
-        r_fac_c2[mod.xi0_cond] = (((b1g-pg)**2)*(mod.Om_m0_g/Dz_g))/(((b1g_fid-pfid)**2)*(mod.Om_m0_fid/Dz_fid))
-        r_fac_c1[mod.xi2_cond] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
+        r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)*(mod.Om_m0_g/Dz_g))**2)/(((b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))**2)
+        r_fac_c1[mod.term_masks['xi2']] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
         #################################    
         fid_term = r_fac_fid*(mod.xi_fid)
         PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
@@ -145,14 +145,14 @@ class DR2:
         r_fac_c1 = np.ones(len(mod.xi_fid))
         r_fac_c2 = np.ones(len(mod.xi_fid))
         
-        r_fac_fid[mod.xi0_cond] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
-        r_fac_fid[mod.xi2_cond] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
-        r_fac_fid[mod.xi4_cond] = (f_g/f_fid)**2
+        r_fac_fid[mod.term_masks['xi0']] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
+        r_fac_fid[mod.term_masks['xi2']] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
+        r_fac_fid[mod.term_masks['xi4']] = (f_g/f_fid)**2
     
-        r_fac_c1[mod.xi0_cond] = ((b1g + f_g/3)*(b1g-pg)*(mod.Om_m0_g/Dz_g))/\
+        r_fac_c1[mod.term_masks['xi0']] = ((b1g + f_g/3)*(b1g-pg)*(mod.Om_m0_g/Dz_g))/\
                                 ((b1g_fid + f_fid/3)*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
-        r_fac_c2[mod.xi0_cond] = (((b1g-pg)**2)*(mod.Om_m0_g/Dz_g))/(((b1g_fid-pfid)**2)*(mod.Om_m0_fid/Dz_fid))
-        r_fac_c1[mod.xi2_cond] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
+        r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)*(mod.Om_m0_g/Dz_g))**2)/(((b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))**2)
+        r_fac_c1[mod.term_masks['xi2']] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
         #################################    
         fid_term = r_fac_fid*(mod.xi_fid)
         PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
