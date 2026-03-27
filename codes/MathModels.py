@@ -160,3 +160,19 @@ class DR2:
                               (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) +\
                               (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
         return fid_term + PNG_term + sys_term
+
+class fNL_only:
+    parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
+    parameter_defaults = parameter_defaults.set_index('key')
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+
+    extra_parameters = set()
+
+    @staticmethod
+    def xi_modded_base_pars(mod, params):
+        fNL = params
+
+        fid_term = mod.xi_fid
+        PNG_term = mod.c1*fNL + mod.c2*(fNL**2)
+        
+        return fid_term + PNG_term 

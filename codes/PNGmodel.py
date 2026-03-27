@@ -51,7 +51,7 @@ class PNGmodel:
         
         self.xi_fid, fid_terms = obs_unwrapper(self.fid_corr_filename)
         if terms == None:
-            self.terms = fid_terms
+            self.terms = list(dict.fromkeys(fid_terms))
 
         self.parameterization_files = []
         self.arrays_to_mask = ['xi_fid']
@@ -244,10 +244,9 @@ class PNGmodel:
         for term in self.terms:
             self.term_masks[term] = self.term_masks[term][self.mask]
 
-        arrays_to_mask = ['xi_fid', 'c1', 'c2', 'pvar_par_B1', 'pvar_par_A1', 'pvar_par_B2', 'pvar_par_A2', 'pvar_par_B3', 'pvar_par_A3']
         # make it so that arrays_to_mask is created as each part is initialized within the other methods. 
         self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
-        for tm in arrays_to_mask:
+        for tm in self.arrays_to_mask:
             self.masked[tm] = getattr(self, tm)[self.mask]
         self.N_obs_vec_masked = len(self.masked['xi_fid'])
         print('Observable will have {} pts'.format(self.N_obs_vec_masked))
@@ -374,15 +373,23 @@ class PNGmodel:
         plt.rc('xtick', labelsize = 12)
         plt.rc('ytick', labelsize = 12)
         plt.rc('lines', lw = 1)
-        fig, axes = plt.subplots(self.num_params, figsize=(12, 14), sharex=True)
         plt_samples = self.sampler.get_chain()
-        for i in range(self.num_params):
-            ax = axes[i]
-            ax.plot(plt_samples[:, :, i], plt_color, alpha=0.3)
+        if self.num_params>1:
+            fig, axes = plt.subplots(self.num_params, figsize=(12, 14), sharex=True)
+            for i in range(self.num_params):
+                ax = axes[i]
+                ax.plot(plt_samples[:, :, i], plt_color, alpha=0.3)
+                ax.set_xlim(0, len(plt_samples))
+                ax.set_ylabel(self.parameter_info['plot_label'].iloc[i])
+                ax.yaxis.set_label_coords(-0.1, 0.5)
+            axes[-1].set_xlabel("step number");
+        else:
+            fig, ax = plt.subplots(figsize=(12, 14*(self.num_params/9.)))
+            ax.plot(plt_samples[:, :, 0], plt_color, alpha=0.3)
             ax.set_xlim(0, len(plt_samples))
-            ax.set_ylabel(self.parameter_info['plot_label'].iloc[i])
+            ax.set_ylabel(self.parameter_info['plot_label'].iloc[0])
             ax.yaxis.set_label_coords(-0.1, 0.5)
-        axes[-1].set_xlabel("step number");
+            ax.set_xlabel("step number");
         if savefig:
             plt.savefig(fname_out)
 

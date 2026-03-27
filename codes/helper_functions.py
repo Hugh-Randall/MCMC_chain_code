@@ -81,7 +81,8 @@ def concatenate_fits(files):
     return df_out.to_numpy()
 
 def reorder_fits(df, terms):
-    return df.sort_values(by=['term','s'])
+    df['term'] = pd.Categorical(df['term'], categories=terms, ordered=True)
+    return df.sort_values(['term', 's']).reset_index(drop=True)
 
 def chain_meta_fname(fname):
     return fname.split('.txt')[0]+'.meta.yaml'
