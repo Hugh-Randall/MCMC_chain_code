@@ -211,8 +211,10 @@ class PNGmodel:
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
-        self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
-        self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
+        # self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
+        # self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
+        self.s_mask = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
+        
         self.nwalkers = nwalkers
         self.nsteps = nsteps
         self.parameter_info = self.parameter_defaults.copy()
@@ -232,7 +234,7 @@ class PNGmodel:
         #####################################################
         ### Define Masks for this run of the model
         #####################################################
-        len_per_term = len(self.s_slice)
+        len_per_term = len(self.fid_corr[self.fid_corr['term']==self.terms[0]])
         self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
         for i,term in enumerate(self.terms):
             self.term_masks[term][i*len_per_term:(i+1)*len_per_term] = True

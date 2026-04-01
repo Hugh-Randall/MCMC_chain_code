@@ -22,20 +22,30 @@ def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
                 s_slice[i] = True
     return s_slice
 
+# def obs_unwrapper(pkg_loc):
+#     # Unwraps an individual corr function to use as the observable
+#     with fits.open(pkg_loc, memmap=False) as hdul:
+#             pkg = hdul[1].data.copy()
+#     # pkg = Table.read(pkg_loc)
+#     col_names = pkg.columns.names
+    
+#     terms = col_names.copy()
+#     terms.remove('s')
+
+#     to_concat = []
+#     for term in terms:
+#         to_concat.append(pkg[term])
+#     xi_obs = np.concatenate(to_concat)
+#     return xi_obs, terms
+
 def obs_unwrapper(pkg_loc):
     # Unwraps an individual corr function to use as the observable
     with fits.open(pkg_loc, memmap=False) as hdul:
-            pkg = hdul[1].data.copy()
-    # pkg = Table.read(pkg_loc)
-    col_names = pkg.columns.names
-    
-    terms = col_names.copy()
-    terms.remove('s')
+            pkg = hdul[1].data.copy()   
 
-    to_concat = []
-    for term in terms:
-        to_concat.append(pkg[term])
-    xi_obs = np.concatenate(to_concat)
+    terms = list(dict.fromkeys(pkg['term']))
+    
+    xi_obs = np.asarray(pkg['obs'])
     return xi_obs, terms
 
 def Omega_m_z(z: float, Om_m0: float):
