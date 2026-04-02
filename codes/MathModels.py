@@ -101,9 +101,9 @@ class DR2_nosys:
         Dz_fid = Dz_norm(mod.z_fid,Om_m0=mod.Om_m0_fid)
         
         ### Define rescale factors ######
-        r_fac_fid = np.ones(len(mod.xi_fid))
-        r_fac_c1 = np.ones(len(mod.xi_fid))
-        r_fac_c2 = np.ones(len(mod.xi_fid))
+        r_fac_fid = np.ones(mod.N_obs_vec_masked)
+        r_fac_c1 = np.ones(mod.N_obs_vec_masked)
+        r_fac_c2 = np.ones(mod.N_obs_vec_masked)
         
         r_fac_fid[mod.term_masks['xi0']] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
         r_fac_fid[mod.term_masks['xi2']] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
@@ -114,8 +114,8 @@ class DR2_nosys:
         r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)*(mod.Om_m0_g/Dz_g))**2)/(((b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))**2)
         r_fac_c1[mod.term_masks['xi2']] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
         #################################    
-        fid_term = r_fac_fid*(mod.xi_fid)
-        PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
+        fid_term = r_fac_fid*(mod.masked['xi_fid'])
+        PNG_term = r_fac_c1*mod.masked['c1']*fNL + r_fac_c2*mod.masked['c2']*(fNL**2)
         return fid_term + PNG_term 
 
 class DR2:
@@ -141,9 +141,9 @@ class DR2:
         Dz_fid = Dz_norm(mod.z_fid,Om_m0=mod.Om_m0_fid)
         
         ### Define rescale factors ######
-        r_fac_fid = np.ones(len(mod.xi_fid))
-        r_fac_c1 = np.ones(len(mod.xi_fid))
-        r_fac_c2 = np.ones(len(mod.xi_fid))
+        r_fac_fid = np.ones(mod.N_obs_vec_masked)
+        r_fac_c1 = np.ones(mod.N_obs_vec_masked)
+        r_fac_c2 = np.ones(mod.N_obs_vec_masked)
         
         r_fac_fid[mod.term_masks['xi0']] = (b1g**2 + (2/3)*b1g*f_g + (f_g**2)/5)/(b1g_fid**2 + (2/3)*b1g_fid*f_fid + (f_fid**2)/5)
         r_fac_fid[mod.term_masks['xi2']] = ( (4/3)*b1g*f_g + (4/7)*(f_g**2) )/( (4/3)*b1g_fid*f_fid + (4/7)*(f_fid**2) )
@@ -154,11 +154,11 @@ class DR2:
         r_fac_c2[mod.term_masks['xi0']] = (((b1g-pg)*(mod.Om_m0_g/Dz_g))**2)/(((b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))**2)
         r_fac_c1[mod.term_masks['xi2']] = (f_g*(b1g-pg)*(mod.Om_m0_g/Dz_g))/(f_fid*(b1g_fid-pfid)*(mod.Om_m0_fid/Dz_fid))
         #################################    
-        fid_term = r_fac_fid*(mod.xi_fid)
-        PNG_term = r_fac_c1*mod.c1*fNL + r_fac_c2*mod.c2*(fNL**2)
-        sys_term = r_fac_fid*((mod.pvar_par_A1*Psys1**2+mod.pvar_par_B1*Psys1) +\
-                              (mod.pvar_par_A2*Psys2**2+mod.pvar_par_B2*Psys2) +\
-                              (mod.pvar_par_A3*Psys3**2+mod.pvar_par_B3*Psys3))
+        fid_term = r_fac_fid*(mod.masked['xi_fid'])
+        PNG_term = r_fac_c1*mod.masked['c1']*fNL + r_fac_c2*mod.masked['c2']*(fNL**2)
+        sys_term = r_fac_fid*((mod.masked['pvar_par_A1']*Psys1**2+mod.masked['pvar_par_B1']*Psys1) +\
+                              (mod.masked['pvar_par_A2']*Psys2**2+mod.masked['pvar_par_B2']*Psys2) +\
+                              (mod.masked['pvar_par_A3']*Psys3**2+mod.masked['pvar_par_B3']*Psys3))
         return fid_term + PNG_term + sys_term
 
 class fNL_only:
@@ -171,8 +171,7 @@ class fNL_only:
     @staticmethod
     def xi_modded_base_pars(mod, params):
         fNL = params
-
-        fid_term = mod.xi_fid
-        PNG_term = mod.c1*fNL + mod.c2*(fNL**2)
         
+        fid_term = mod.masked['xi_fid']
+        PNG_term = mod.masked['c1']*fNL + mod.masked['c2']*(fNL**2)
         return fid_term + PNG_term 

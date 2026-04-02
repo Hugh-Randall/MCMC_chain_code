@@ -256,6 +256,17 @@ class PNGmodel:
         attrs_to_delete = ['mask', 'term_masks', 'masked', 'N_obs_vec_masked', 'exclude']
 
         #####################################################
+        ### Define the observation vector
+        #####################################################
+        if min_type == 'pseudo':
+            self.obs = self.xi_modded_base_pars(self.params_toy)
+        elif min_type == 'data':
+            self.obs, _ = obs_unwrapper(self.data_obs)
+            self.obs = self.obs[self.mask]
+            
+        attrs_to_delete.append('obs')
+        
+        #####################################################
         ### Load any missing attributes
         #####################################################
         missing_attributes = self.get_missing_attributes()
@@ -287,17 +298,6 @@ class PNGmodel:
             return log_prior
         priors = list(self.parameter_info['prior'])
         self.log_prior_base_pars = compile_log_prior(priors)        
-
-        #####################################################
-        ### Define the observation vector
-        #####################################################
-        if min_type == 'pseudo':
-            self.obs = self.xi_modded_base_pars(self.params_toy)
-        elif min_type == 'data':
-            self.obs, _ = obs_unwrapper(self.data_obs)
-            self.obs = self.obs[self.mask]
-            
-        attrs_to_delete.append('obs')
 
         #####################################################
         ### Run the MCMC 
