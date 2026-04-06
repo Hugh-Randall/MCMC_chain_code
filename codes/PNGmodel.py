@@ -211,6 +211,13 @@ class PNGmodel:
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
+
+        unexpected_kwargs = ['smin', 'smax', 'scutwindow']
+        for uk in unexpected_kwargs:
+            if (uk in kwargs): 
+                idx = uk.index('s')
+                ek = uk[:idx+1] + '_' + uk[idx+1:]
+                raise Exception(f'Unexpected key word argument "{uk}", did you mean "{ek}"?')
         # self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
         # self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
         self.s_mask = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
