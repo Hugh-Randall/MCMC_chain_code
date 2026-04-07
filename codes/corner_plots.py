@@ -94,7 +94,7 @@ def make_corner(chains, params=None,
     if chains[0].chain_array.ndim >1:
         chains_toplot = [c.chain_array[:,par_index] for c in chains]
     else:
-        chains_toplot = [c.chain_array for c in chains]
+        chains_toplot = [c.chain_array.reshape((len(c.chain_array), 1)) for c in chains]
     if usecolors:
         allowed_colors = list(colors.keys())
         chain_colors = [c.color for c in chains]
