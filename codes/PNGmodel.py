@@ -284,27 +284,8 @@ class PNGmodel:
         #####################################################
         ### Define the log prior function:
         #####################################################
-        def compile_log_prior(priors):
-            # Separate the two prior types at compile time
-            gaussian_terms = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "gauss"]
-            uniform_terms  = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "flat"]
-        
-            def log_prior(params):
-                # Uniform bounds check first — cheapest early exit
-                for i, low, high in uniform_terms:
-                    if not (low <= params[i] <= high):
-                        return -np.inf
-        
-                # Gaussian terms inlined — no function call overhead
-                total = 0.0
-                for i, mean, sigma in gaussian_terms:
-                    d = ((params[i] - mean) / sigma)**2
-                    total -= d
-        
-                return total
-            return log_prior
         priors = list(self.parameter_info['prior'])
-        self.log_prior_base_pars = compile_log_prior(priors)        
+        self.log_prior_base_pars = self.compile_log_prior(priors)        
 
         #####################################################
         ### Run the MCMC 
@@ -363,6 +344,27 @@ class PNGmodel:
         for attr in attrs_to_delete:
             delattr(self, attr)
         return
+
+    @staticmethod
+    def compile_log_prior(priors):
+        # Separate the two prior types at compile time
+        gaussian_terms = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "gauss"]
+        uniform_terms  = [(i, p[0], p[1]) for i, p in enumerate(priors) if p[2] == "flat"]
+    
+        def log_prior(params):
+            # Uniform bounds check first — cheapest early exit
+            for i, low, high in uniform_terms:
+                if not (low <= params[i] <= high):
+                    return -np.inf
+    
+            # Gaussian terms inlined — no function call overhead
+            total = 0.0
+            for i, mean, sigma in gaussian_terms:
+                d = ((params[i] - mean) / sigma)**2
+                total -= d
+    
+            return total
+        return log_prior
 
     def plot_walkers(self, plt_color='green', savefig=False, fname_out=None):
         """
