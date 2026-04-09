@@ -7,6 +7,7 @@ import emcee
 from multiprocessing import Pool
 import yaml
 from sys import platform
+from tqdm import tqdm
 
 import os
 
@@ -206,86 +207,20 @@ class PNGmodel:
             Anything passed to kwargs will temporarily be stored as an instance attribute to the PNGmodel,
             and then subsequently removed from the instance's attributes at the end of this function. 
         """
-        
-        self.exclude = exclude
-        self.s_min = s_min
-        self.s_max = s_max
-        self.s_cutwindow = s_cutwindow
 
-        unexpected_kwargs = ['smin', 'smax', 'scutwindow']
-        for uk in unexpected_kwargs:
-            if (uk in kwargs): 
-                idx = uk.index('s')
-                ek = uk[:idx+1] + '_' + uk[idx+1:]
-                raise Exception(f'Unexpected key word argument "{uk}", did you mean "{ek}"?')
-        # self.s_slice = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
-        # self.s_mask = np.concatenate(len(self.terms)*[self.s_slice])
-        self.s_mask = get_2pcf_idx_slice(self.fid_corr,self.s_min,self.s_max, self.s_cutwindow)
+        self.prep_run_dependent_parts(min_type=min_type, 
+                                      data_obs=data_obs, params_toy=params_toy,
+                                      s_min=s_min, s_max=s_max, s_cutwindow=s_cutwindow, exclude=exclude, 
+                                      update_priors=update_priors,
+                                      # Now the kwargs 
+                                      **kwargs)
         
+        #####################################################
+        ### MCMC dependent attributes
+        #####################################################
         self.nwalkers = nwalkers
         self.nsteps = nsteps
-        self.parameter_info = self.parameter_defaults.copy()
-        self.params_toy = params_toy
-        self.data_obs = data_obs
-
-        #####################################################
-        ### Update the priors if applicable
-        #####################################################
-        if update_priors is not None: 
-            # Must be a dict with keys given by the parameter labels of parameter_defaults
-            # and values with what the defaults will be replaced by
-            # For example update_priors = {'b1g':(2, 0.03, 'gauss')}
-            for key,val in update_priors.items(): 
-                self.parameter_info.at[key, 'prior'] = val 
-
-        #####################################################
-        ### Define Masks for this run of the model
-        #####################################################
-        len_per_term = len(self.fid_corr[self.fid_corr['term']==self.terms[0]])
-        self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
-        for i,term in enumerate(self.terms):
-            self.term_masks[term][i*len_per_term:(i+1)*len_per_term] = True
-
-        self.mask = self.s_mask.copy()
-        for term in exclude:
-            self.mask = np.logical_and(self.mask, ~self.term_masks[term])
-            
-        for term in self.terms:
-            self.term_masks[term] = self.term_masks[term][self.mask]
-
-        # make it so that arrays_to_mask is created as each part is initialized within the other methods. 
-        self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
-        for tm in self.arrays_to_mask:
-            self.masked[tm] = getattr(self, tm)[self.mask]
-        self.N_obs_vec_masked = len(self.masked['xi_fid'])
-        print('Observable will have {} pts'.format(self.N_obs_vec_masked))
-        
-        attrs_to_delete = ['mask', 'term_masks', 'masked', 'N_obs_vec_masked', 'exclude']
-
-        #####################################################
-        ### Define the observation vector
-        #####################################################
-        if min_type == 'pseudo':
-            self.obs = self.xi_modded_base_pars(self.params_toy)
-        elif min_type == 'data':
-            self.obs, _ = obs_unwrapper(self.data_obs)
-            self.obs = self.obs[self.mask]
-            
-        attrs_to_delete.append('obs')
-        
-        #####################################################
-        ### Load any missing attributes
-        #####################################################
-        missing_attributes = self.get_missing_attributes()
-        attrs_to_delete += missing_attributes
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-                    
-        #####################################################
-        ### Define the log prior function:
-        #####################################################
-        priors = list(self.parameter_info['prior'])
-        self.log_prior_base_pars = self.compile_log_prior(priors)        
+        self.attrs_to_delete.extend(['nwalkers', 'nsteps'])      
 
         #####################################################
         ### Run the MCMC 
@@ -311,7 +246,7 @@ class PNGmodel:
                                                      self.num_params,
                                                      self.log_probability_base_pars)
             self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
-        attrs_to_delete.append('sampler')
+        self.attrs_to_delete.append('sampler')
 
         #####################################################
         ### Plotting/saving walker plots
@@ -340,10 +275,96 @@ class PNGmodel:
         ### Save Meta file and delete temporary attributes
         #####################################################
         self.save_meta(fname_chain)
-        attrs_to_delete.append('qnts')
-        for attr in attrs_to_delete:
+        self.attrs_to_delete.append('qnts')
+        
+        for attr in self.attrs_to_delete.copy():
             delattr(self, attr)
         return
+
+    def compute_likelihood(self, 
+                           min_type, 
+                           param,
+                           param_values,
+                           fixed_params,
+                           data_obs=None, params_toy=None,
+                           s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale/term cuts used to decide what to mask in the model
+                           update_priors=None,
+                           **kwargs):
+        """
+        Complementary to run_sampling. It has very similar inputs but rather than running the MCMC
+        sampling, it caclulated the chi squared as a function of one of the parameters of interest. 
+        This can be helpful when debugging. Currently, only one parameter may be varied at a time,
+        while all others must be fixed.
+    
+        Parameters
+        ----------
+        min_type : str
+            A string defining where your observation vector comes from. Either 'data' or 'pseudo'. 
+            If 'data' is chosen then the 'data_obs' argument must also be provided. In this case the
+            observation vector is taken to be the data stored in the 'data_obs' file. If 'pseudo' is 
+            chosen, then the 'params_toy' argument must also be provided. In this case the observation
+            vector is constructed by passing 'params_toy' to self.xi_modded_base_pars.
+        param : str
+            Parameter that will be varied when calculating and plotting the likelihood.
+        param_values: array
+            Array of values that 'param' will take.
+        fixed_params: dict
+            A dictionary holding the values that other POIs will be fixed too. The keys are the parameter
+            labels (matching the keys of MathModel.parameter_defaults), and the values are the corresponding 
+            values the keys will be fixed to.
+        data_obs : str, optional
+            Full filepath to data (in fits format) that will be used as the observation vector. 
+        params_toy : array, optional
+            Array holding the parameters of interest to be used to construct the observation vector. 
+        s_min : int or float, optional
+            Minimum scale to be used in the model.
+        s_max : int or float, optional
+            Maximum scale to be used in the model.
+        s_cutwindow : array of integers or floats, optional
+            Length-two array representing a range of scales to be masked, e.g. [90,130] for masking BAO.
+        exclude : array of strings, optional
+            Array of strings corresponding to terms in your data vector to be masked. For example, if
+            your data vector has the terms xi0, xi2, xi4, setting exclude=['xi4'] masks the 
+            hexadecapole everywhere within the model.
+        update_priors : None or dict, optional
+            Used to update the priors for this MCMC run from their default values as they are defined in
+            the chosen PNGmodel's parameter_defaults. Default is None. If a dictionary is provided, the 
+            keys must be strings corresponding to the keys of the parameter_defaults dataframe. The values 
+            must be arrays corresponding to the values with which the chosen parameter's prior will be replaced.
+            For example, update_priors={'b1g':[1.90, 0.06, 'gauss']}
+        kwargs : dict, optional
+            Used to add data that is necessary to run the model but not previously loaded. The values 
+            passed should correspond to those defined in the given MathModel's 'extra_parameters'.
+            Anything passed to kwargs will temporarily be stored as an instance attribute to the PNGmodel,
+            and then subsequently removed from the instance's attributes at the end of this function. 
+        """
+
+        self.prep_run_dependent_parts(min_type=min_type, 
+                                      data_obs=data_obs, params_toy=params_toy,
+                                      s_min=s_min, s_max=s_max, s_cutwindow=s_cutwindow, exclude=exclude,
+                                      update_priors=update_priors,
+                                      # Now the kwargs 
+                                      **kwargs)
+        
+        #####################################################
+        ### likelihood dependent attributes
+        #####################################################
+        idx = self.parameters.index(param)
+        idxs_other = [self.parameters.index(key) for key in fixed_params.keys()]
+
+        print('Computing chi squared...')
+        likelihood = []
+        for val in tqdm(param_values):
+            params = np.zeros(len(self.parameters))
+            params[idx] = val
+            params[idxs_other] = list(fixed_params.values())
+            likelihood.append(self.log_probability_base_pars(params))
+        likelihood = np.asarray(likelihood)
+       
+        for attr in self.attrs_to_delete.copy():
+            delattr(self, attr)
+            
+        return likelihood       
 
     @staticmethod
     def compile_log_prior(priors):
@@ -365,6 +386,75 @@ class PNGmodel:
     
             return total
         return log_prior
+
+    def prep_run_dependent_parts(self, 
+                                 min_type, 
+                                 data_obs=None, params_toy=None,
+                                 s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale/term cuts used to decide what to mask in the model
+                                 update_priors=None,
+                                 **kwargs):
+        attributes_initial = list(self.__dict__.keys())
+        self.exclude = exclude
+        self.s_min = s_min
+        self.s_max = s_max
+        self.s_cutwindow = s_cutwindow
+        # self.attrs_to_delete = ['attrs_to_delete', 's_min', 's_max', 's_cutwindow', 'exclude']
+        
+        # self.prep_run_dependent_parts()
+        unexpected_kwargs = ['smin', 'smax', 'scutwindow']
+        for uk in unexpected_kwargs:
+            if (uk in kwargs): 
+                idx = uk.index('s')
+                ek = uk[:idx+1] + '_' + uk[idx+1:]
+                raise Exception(f'Unexpected key word argument "{uk}", did you mean "{ek}"?')
+        
+        self.parameter_info = self.parameter_defaults.copy()
+        self.params_toy = params_toy
+        self.data_obs = data_obs
+        # self.attrs_to_delete.extend(['params_toy', 'parameter_info', 'data_obs'])
+
+        #####################################################
+        ### Update the priors if applicable
+        #####################################################
+        if update_priors is not None: 
+            # Must be a dict with keys given by the parameter labels of parameter_defaults
+            # and values with what the defaults will be replaced by
+            # For example update_priors = {'b1g':(2, 0.03, 'gauss')}
+            for key,val in update_priors.items(): 
+                self.parameter_info.at[key, 'prior'] = val 
+
+        #####################################################
+        ### Define Masks for this run of the model
+        #####################################################
+        self.make_masked(self.s_min, self.s_max, self.s_cutwindow, self.exclude)
+        print('Observable will have {} pts'.format(self.N_obs_vec_masked))
+        # self.attrs_to_delete.extend(['mask', 'term_masks', 'masked', 'N_obs_vec_masked'])
+
+        #####################################################
+        ### Define the observation vector
+        #####################################################
+        if min_type == 'pseudo':
+            self.obs = self.xi_modded_base_pars(self.params_toy)
+        elif min_type == 'data':
+            self.obs, _ = obs_unwrapper(self.data_obs)
+            self.obs = self.obs[self.mask]
+        # self.attrs_to_delete.append('obs')
+        
+        #####################################################
+        ### Load any missing attributes
+        #####################################################
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+                    
+        #####################################################
+        ### Define the log prior function:
+        #####################################################
+        priors = list(self.parameter_info['prior'])
+        self.log_prior_base_pars = self.compile_log_prior(priors)  
+
+        attributes_final = list(self.__dict__.keys())
+        self.attrs_to_delete = list(set(attributes_final) - set(attributes_initial))
+        return
 
     def plot_walkers(self, plt_color='green', savefig=False, fname_out=None):
         """
@@ -441,3 +531,22 @@ class PNGmodel:
     def show_parameters(self):
         print('This MathModel needs the following parameters:')
         print(self.parameters)
+
+    def make_masked(self, s_min=None, s_max=None, s_cutwindow=None, exclude=[]):
+        self.s_mask = get_2pcf_idx_slice(self.fid_corr, s_min, s_max, s_cutwindow)
+        len_per_term = len(self.fid_corr[self.fid_corr['term']==self.terms[0]])
+        self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
+        
+        for i,term in enumerate(self.terms):
+            self.term_masks[term][i*len_per_term:(i+1)*len_per_term] = True
+
+        self.mask = self.s_mask.copy()
+        for term in exclude:
+            self.mask = np.logical_and(self.mask, ~self.term_masks[term])
+            
+        for term in self.terms:
+            self.term_masks[term] = self.term_masks[term][self.mask]
+        self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
+        for tm in self.arrays_to_mask:
+            self.masked[tm] = getattr(self, tm)[self.mask]
+        self.N_obs_vec_masked = len(self.masked['xi_fid'])
