@@ -534,11 +534,15 @@ class PNGmodel:
 
     def make_masked(self, s_min=None, s_max=None, s_cutwindow=None, exclude=[]):
         self.s_mask = get_2pcf_idx_slice(self.fid_corr, s_min, s_max, s_cutwindow)
-        len_per_term = len(self.fid_corr[self.fid_corr['term']==self.terms[0]])
-        self.term_masks = {term: np.zeros(self.N_obs_vec, dtype=bool) for term in self.terms}
+        term_lengths = [len(self.fid_corr[self.fid_corr['term']==term]) for term in self.terms]
         
-        for i,term in enumerate(self.terms):
-            self.term_masks[term][i*len_per_term:(i+1)*len_per_term] = True
+        self.term_masks = {term: self.fid_corr['term']==term for term in self.terms}
+        
+        # for i,term in enumerate(self.terms):
+        #     first_idx = 0 if i==0 else term_lengths[i-1]
+        #     last_idx = term_lengths[i] if i==0 else term_lengths[i]+term_lengths[i-1]
+        #     print(first_idx, last_idx)
+        #     self.term_masks[term][first_idx:last_idx] = True
 
         self.mask = self.s_mask.copy()
         for term in exclude:

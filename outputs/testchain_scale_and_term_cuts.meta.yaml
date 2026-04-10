@@ -1,0 +1,127 @@
+parameter_info:
+  fNL:
+    init: 0
+    prior:
+    - -250
+    - 250
+    - flat
+    plot_label: $f_{NL}$
+    num_decimals: 0
+    unit: ''
+  b1g:
+    init: 1
+    prior:
+    - 0.5
+    - 4
+    - flat
+    plot_label: $b_{1g}$
+    num_decimals: 2
+    unit: ''
+  b1h:
+    init: 1
+    prior:
+    - 1.94
+    - 0.04
+    - gauss
+    plot_label: $b_{1h}$
+    num_decimals: 2
+    unit: ''
+  b1gfid:
+    init: 1
+    prior:
+    - 1.94
+    - 0.04
+    - gauss
+    plot_label: $b_{1g}^{fid}$
+    num_decimals: 2
+    unit: ''
+  ph:
+    init: 1
+    prior:
+    - 1
+    - 0.1
+    - gauss
+    plot_label: $p_h$
+    num_decimals: 1
+    unit: ''
+  pg:
+    init: 1
+    prior:
+    - 1
+    - 0.1
+    - gauss
+    plot_label: $p_g$
+    num_decimals: 1
+    unit: ''
+  KsysSGC:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{SGC}}$
+    num_decimals: 1
+    unit: \%
+  KsysDEC:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{DEC}}$
+    num_decimals: 1
+    unit: \%
+  KsysMZLS:
+    init: 1
+    prior:
+    - 0
+    - 10
+    - gauss
+    plot_label: $K_{\mathrm{MZLS}}$
+    num_decimals: 1
+    unit: \%
+fid_corr_filename: ./inputs/fiducial.fits
+cov_filename: ./inputs/covariance_matrix.npy
+parameterization_files:
+- ./inputs/quadfits_PNG.csv
+- ./inputs/quadfits_KsysSGC.csv
+- ./inputs/quadfits_KsysDEC.csv
+- ./inputs/quadfits_KsysMZLS.csv
+scale:
+  s_min: null
+  s_max: 380
+  s_cutwindow:
+  - 90
+  - 130
+math_model: Y1
+qnts:
+- - 6.355261158600245
+  - -6.379085765368262
+  - 6.38401364766396
+- - 0.05533227111388639
+  - 1.9165945026925275
+  - 0.055488219056879506
+- - 0.04008339643787506
+  - 1.9424891646305185
+  - 0.040438734714049795
+- - 0.03969994608403038
+  - 1.9380814900619403
+  - 0.03982519180800015
+- - 0.0994349223144626
+  - 0.9905767631837377
+  - 0.0992972879116577
+- - 0.09937006932719394
+  - 1.013051329539156
+  - 0.10020440353723659
+- - 6.634223717702975
+  - -0.2475816963010491
+  - 6.668948752379312
+- - 6.665569332904912
+  - 8.72167338470216
+  - 6.8257614424488295
+- - 6.354307990239583
+  - 3.9256366097327273
+  - 6.302802860506986
+exclude:
+- xi2
+- xi4
