@@ -29,7 +29,7 @@ colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 
 def make_corner(chains, params=None,
                 savefig=False, figdir='./figures/', outfile=None, 
-                usecolors=False, figsize=None, title=None, ksys_prior=False,
+                usecolors=False, figsize=None, title=None, title_fsize=None, ksys_prior=False,
                 labelfsize=None, legendfsize=None, return_fig=False):
     """
     Makes a corner plot for an arbitrary number of parameters given a list of chain objects. 
@@ -193,7 +193,10 @@ def make_corner(chains, params=None,
                           fontsize=fsize_legend)
     
     if title is not None:
-        plt.suptitle(title, x=0.52)
+        if title_fsize is not None:
+             plt.suptitle(title, x=0.52, fontsize=title_fsize)
+        else:
+            plt.suptitle(title, x=0.52)
 
     if savefig:
         if outfile==None:
