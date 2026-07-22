@@ -30,7 +30,7 @@ colors = yaml.safe_load(open(str(module_path) + '/config/colors.yaml'))
 def make_corner(chains, params=None,
                 savefig=False, figdir='./figures/', outfile=None, 
                 usecolors=False, figsize=None, title=None, title_fsize=None, ksys_prior=False,
-                labelfsize=None, legendfsize=None, return_fig=False):
+                labelfsize=None, legendfsize=None, return_fig=False, buffer_size=None):
     """
     Makes a corner plot for an arbitrary number of parameters given a list of chain objects. 
     It automatically decides the number of axes given the number of parameters to be plotted
@@ -153,7 +153,9 @@ def make_corner(chains, params=None,
 
     bb = text.get_window_extent().transformed(GTC.axes[axIDs[0]].transAxes.inverted())
     dy = bb._points[1,1]-bb._points[0,1]
-    buffer_size = 0.3*dy
+
+    if buffer_size == None:
+        buffer_size = 0.3*dy
     text.remove()
 
     for axi in range(len(axIDs)):
