@@ -16,7 +16,7 @@ from codes.helper_functions import *
 import matplotlib.pyplot as plt
 from pathlib import Path
 module_path = Path(__file__).parent
-plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
+# plt.style.use( str(module_path) + '/config/mystyle.mplstyle')
 
 class PNGmodel:
          
@@ -57,6 +57,8 @@ class PNGmodel:
         self.parameterization_files = []
         self.arrays_to_mask = ['xi_fid']
         self.N_obs_vec = len(self.xi_fid)
+
+        self.add_to_meta = ['fid_corr_filename', 'num_params', 'parameters', 'terms', 'N_obs_vec']
         return
 
     def load_fits(self, file, mapper=None):
@@ -102,7 +104,7 @@ class PNGmodel:
         self.parameterization_files.append(file)
         return
     
-    def load_covariance(self, cov_pkg, cov_rescale_factor=1.):
+    def load_covariance(self, cov_pkg, num_mocks=1000, cov_rescale_factor=1.):
         """
         Loads the covariance matrix as a PNGmodel object. Notice! It does not compute the 
         covariance matrix so you must be sure that the order of the indices of the covariance 
@@ -120,6 +122,9 @@ class PNGmodel:
         print('Loading covariance matrix...')
         self.cov_file = cov_pkg
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)
+        self.num_cov_mocks = num_mocks
+        self.cov_rescale_factor = cov_rescale_factor
+        self.add_to_meta.extend(['cov_file', 'num_cov_mocks', 'cov_rescale_factor'])
         return
 
     def xi_modded_base_pars(self, params):
@@ -220,16 +225,18 @@ class PNGmodel:
         #####################################################
         self.nwalkers = nwalkers
         self.nsteps = nsteps
+        self.add_to_meta.extend(['nwalkers', 'nsteps'])
         self.attrs_to_delete.extend(['nwalkers', 'nsteps'])      
 
         #####################################################
         ### Run the MCMC 
         #####################################################
-        if platform == 'win32':# turn off mutliprocessing for windows
+        if platform == 'win32': # turn off mutliprocessing for windows
                 multiprocessing = False
             
-        start_pos = np.asarray(self.parameter_info['init'])+1e-4*np.random.randn(
+        start_pos = np.asarray(self.parameter_info['init'])+1e-5*np.random.randn(
                                    self.nwalkers, self.num_params)
+        
         print('Exploring parameter space...')
         if multiprocessing:
             os.environ["OMP_NUM_THREADS"] = "1"
@@ -265,12 +272,21 @@ class PNGmodel:
             discard=burn_in_steps,thin=thinner,flat=True)
         np.savetxt(fname_chain, burn_samples)
         self.qnts = get_ints(burn_samples)
+        
         for i in range(self.num_params):
             param = self.parameters[i]
             print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
                   str(np.round(self.qnts[i][0],decimals=2))+' - '+
                   str(np.round(self.qnts[i][2],decimals=2)))
-            
+
+        #####################################################
+        ### Compute chi squared and number of dof
+        #####################################################
+        self.num_degrees_of_freedom = self.N_obs_vec_masked-self.num_params
+        best_fit_params = np.asarray(self.qnts)[:,1]
+        self.chi_squared = float(-2*self.log_probability_base_pars(best_fit_params))
+        self.add_to_meta.extend(['num_degrees_of_freedom', 'chi_squared'])
+        
         #####################################################
         ### Save Meta file and delete temporary attributes
         #####################################################
@@ -398,10 +414,9 @@ class PNGmodel:
         self.s_min = s_min
         self.s_max = s_max
         self.s_cutwindow = s_cutwindow
-        # self.attrs_to_delete = ['attrs_to_delete', 's_min', 's_max', 's_cutwindow', 'exclude']
-        
-        # self.prep_run_dependent_parts()
-        unexpected_kwargs = ['smin', 'smax', 'scutwindow']
+        self.add_to_meta.append('exclude')
+
+        unexpected_kwargs = ['smin', 'smax', 'scutwindow'] # I forget to ad the underscore every time!
         for uk in unexpected_kwargs:
             if (uk in kwargs): 
                 idx = uk.index('s')
@@ -411,7 +426,7 @@ class PNGmodel:
         self.parameter_info = self.parameter_defaults.copy()
         self.params_toy = params_toy
         self.data_obs = data_obs
-        # self.attrs_to_delete.extend(['params_toy', 'parameter_info', 'data_obs'])
+        self.add_to_meta.extend(['params_toy', 'data_obs'])
 
         #####################################################
         ### Update the priors if applicable
@@ -422,6 +437,15 @@ class PNGmodel:
             # For example update_priors = {'b1g':(2, 0.03, 'gauss')}
             for key,val in update_priors.items(): 
                 self.parameter_info.at[key, 'prior'] = val 
+                num1, num2, prior_type = val
+
+                self.parameter_info['init'] = self.parameter_info['init'].astype(float)
+                # if gauss then num1 is mu, make it the init val
+                if prior_type=='gauss':
+                    self.parameter_info.at[key, 'init'] = num1 
+                # otherwise then it is flat and the init val is the average of the bounds
+                elif prior_type=='flat':
+                    self.parameter_info.at[key, 'init'] = (num1 + num2)/2.
 
         #####################################################
         ### Define Masks for this run of the model
@@ -445,6 +469,7 @@ class PNGmodel:
         #####################################################
         for key, value in kwargs.items():
             setattr(self, key, value)
+            self.add_to_meta.append(key)
                     
         #####################################################
         ### Define the log prior function:
@@ -508,14 +533,20 @@ class PNGmodel:
         """
         fname_meta = chain_meta_fname(fname_chain)
         meta = {}
+        for attr in self.add_to_meta:
+            meta[attr] = getattr(self, attr)
         meta['parameter_info'] = self.parameter_info.to_dict(orient='index')
-        meta['fid_corr_filename'] = self.fid_corr_filename
-        meta['cov_filename'] = self.cov_file
+        # meta['fid_corr_filename'] = self.fid_corr_filename
+        # meta['cov_filename'] = self.cov_file
+        # meta['hartlap_factor'] = self.hartlap_factor
+        # meta['percival_factor'] = self.percival_factor
         meta['parameterization_files'] = self.parameterization_files
         meta['scale'] = {'s_min': self.s_min, 's_max': self.s_max, 's_cutwindow': self.s_cutwindow}
         meta['math_model'] = self.math.__class__.__name__
         meta['qnts'] = [[float(q) for q in tup] for tup in self.qnts]
-        meta['exclude'] = self.exclude
+        # meta['exclude'] = self.exclude
+        # for attr in self.attrs_to_delete:
+        #     meta[attr] = getattr(self, attr)
         # meta['sys_pkg_sets'] = self.sys_pkg_sets
         with open(fname_meta, 'w') as f:
             yaml.dump(meta, f, sort_keys=False)
@@ -533,7 +564,7 @@ class PNGmodel:
         print(self.parameters)
 
     def make_masked(self, s_min=None, s_max=None, s_cutwindow=None, exclude=[]):
-        self.s_mask = get_2pcf_idx_slice(self.fid_corr, s_min, s_max, s_cutwindow)
+        self.s_mask = get_2pcf_idx_slice(self.fid_corr, s_min, s_max, s_cutwindow, self.terms)
         term_lengths = [len(self.fid_corr[self.fid_corr['term']==term]) for term in self.terms]
         
         self.term_masks = {term: self.fid_corr['term']==term for term in self.terms}
@@ -550,7 +581,13 @@ class PNGmodel:
             
         for term in self.terms:
             self.term_masks[term] = self.term_masks[term][self.mask]
-        self.masked = {'cov_inv': np.linalg.inv(self.cov_mat[self.mask][:,self.mask])}
+        self.masked = {}
         for tm in self.arrays_to_mask:
             self.masked[tm] = getattr(self, tm)[self.mask]
-        self.N_obs_vec_masked = len(self.masked['xi_fid'])
+            
+        self.N_obs_vec_masked = len(self.masked['xi_fid']) # number of data points for this run
+
+        self.hartlap_factor = hartlap_factor(self.N_obs_vec_masked, self.num_cov_mocks)
+        self.percival_factor = percival_factor(self.N_obs_vec_masked, self.num_cov_mocks, self.num_params)
+        self.add_to_meta.extend(['hartlap_factor', 'percival_factor'])
+        self.masked['cov_inv'] = (self.hartlap_factor/self.percival_factor)*np.linalg.inv(self.cov_mat[self.mask][:,self.mask])
