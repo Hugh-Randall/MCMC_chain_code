@@ -3,23 +3,64 @@ import pandas as pd
 from astropy.io import fits
 # from astropy.table import Table
 
-def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow) :
+# def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow, terms) :
+#     # Returns the idx locations for diag npcf
+#     # Output is a boolean array, True for included idxs
+#     s_vec = file['s']
+#     s_slice = np.zeros(len(s_vec),dtype='bool')
+#     if s_min==None:
+#         s_min = min(s_vec)
+#     if s_max==None:
+#         s_max = max(s_vec)
+#     if s_cutwindow is None:
+#         for i in range(len(s_slice)):
+#             if (s_vec[i]>=s_min)&(s_vec[i]<=s_max):
+#                 s_slice[i] = True
+#     else:
+#         for i in range(len(s_slice)):
+#             if (s_vec[i]>=s_min)&(s_vec[i]<=s_cutwindow[0])|(s_vec[i]>=s_cutwindow[1])&(s_vec[i]<=s_max):
+#                 s_slice[i] = True
+#     return s_slice
+
+def get_2pcf_idx_slice(file, s_min, s_max, s_cutwindow, terms) :
     # Returns the idx locations for diag npcf
     # Output is a boolean array, True for included idxs
+    # Need to update this for case where any of smax smin or scutwindow can be dicts and the others can be floats
     s_vec = file['s']
     s_slice = np.zeros(len(s_vec),dtype='bool')
     if s_min==None:
         s_min = min(s_vec)
     if s_max==None:
         s_max = max(s_vec)
-    if s_cutwindow is None:
-        for i in range(len(s_slice)):
-            if (s_vec[i]>=s_min)&(s_vec[i]<=s_max):
-                s_slice[i] = True
+        
+    if (type(s_max)==dict):
+        masks = []
+        for term in terms:
+            s_min_term = s_min
+            s_max_term = s_max[term]
+            s_cutwindow_term = s_cutwindow
+            s_temp = s_vec[file['term']==term].copy()
+            mask_term = np.zeros(len(s_temp),dtype='bool')
+            if s_cutwindow_term is None:
+                for i in range(len(mask_term)):
+                    if (s_temp[i]>=s_min_term)&(s_temp[i]<=s_max_term):
+                        mask_term[i] = True
+            else:
+                for i in range(len(mask_term)):
+                    if (s_temp[i]>=s_min_term)&(s_temp[i]<=s_cutwindow_term[0])|(s_temp[i]>=s_cutwindow_term[1])&(s_temp[i]<=s_max_term):
+                        mask_term[i] = True
+            masks.append(mask_term)
+        s_slice = np.concatenate(masks)
     else:
-        for i in range(len(s_slice)):
-            if (s_vec[i]>=s_min)&(s_vec[i]<=s_cutwindow[0])|(s_vec[i]>=s_cutwindow[1])&(s_vec[i]<=s_max):
-                s_slice[i] = True
+        if s_cutwindow is None:
+            for i in range(len(s_slice)):
+                if (s_vec[i]>=s_min)&(s_vec[i]<=s_max):
+                    s_slice[i] = True
+        else:
+            for i in range(len(s_slice)):
+                if (s_vec[i]>=s_min)&(s_vec[i]<=s_cutwindow[0])|(s_vec[i]>=s_cutwindow[1])&(s_vec[i]<=s_max):
+                    s_slice[i] = True
+                
     return s_slice
 
 # def obs_unwrapper(pkg_loc):
@@ -102,3 +143,13 @@ def gtc_ax_ids(N):
     axids = list(range(num_axs))
     axids = axids[-N:]
     return axids
+
+def hartlap_factor(num_data, num_mocks):
+    # to be applied to inverse covariance matrix
+    return (num_mocks-num_data-2)/(num_mocks-1)
+    
+def percival_factor(num_data, num_mocks, num_params):
+    # The inverse of this must be applied to the inverse covariance matrix
+    A = 2/((num_mocks-num_data-1)*(num_mocks-num_data-4))
+    B = (num_mocks-num_data-2)/((num_mocks-num_data-1)*(num_mocks-num_data-4))
+    return (1+B*(num_data-num_params))/(1 + A + B*(num_params+1))
