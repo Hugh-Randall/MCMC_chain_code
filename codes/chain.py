@@ -5,7 +5,8 @@ import yaml
 class chain:
     def __init__(self, filepath, label,
                  color=None,
-                 lazy_load=False):
+                 lazy_load=False,
+                 verbose=True):
         """
         Initializes a chain object which stores the MCMC output array as well as
         corresponding metadata. These are the objects that are used to make coner plots
@@ -36,7 +37,7 @@ class chain:
         
         fname_meta = chain_meta_fname(filepath)
         with open(fname_meta, 'r') as f:
-            meta = yaml.safe_load(f)
+            meta = yaml.unsafe_load(f)
         for key in meta.keys():
             setattr(self, key, meta[key])
 
@@ -46,8 +47,9 @@ class chain:
         if not hasattr(self, 'qnts'):
             self.load_array()
             self.qnts = get_ints(self.chain_array)
-        
-        print(f'finished loading "{self.label}"')
+
+        if verbose:
+            print(f'finished loading "{self.label}"')
 
     def load_array(self):
         self.chain_array = np.loadtxt(self.filepath)
