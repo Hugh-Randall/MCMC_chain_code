@@ -3,10 +3,11 @@ from codes.helper_functions import *
 import yaml
 
 class chain:
-    def __init__(self, filepath, label,
+    def __init__(self, filepath, 
+                 label=None,
                  color=None,
                  lazy_load=False,
-                 verbose=True):
+                 verbose=False):
         """
         Initializes a chain object which stores the MCMC output array as well as
         corresponding metadata. These are the objects that are used to make coner plots
