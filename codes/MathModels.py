@@ -641,6 +641,121 @@ class DR2_cross_all:
         regression_term = r_fac_fid_png*mod.masked['pvar_par_Kregr']*Kregr
         return fid_term + PNG_term + sys_term + regression_term
 
+class DR2_LRG_QSO:
+    parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
+    parameter_defaults = parameter_defaults.set_index('key')
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['b0g_LRG'] = [1, [0, 5,'flat'], r'$b_{LRG}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
+    parameter_defaults.loc['b0gfid_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{fid}$', 2, '']
+    parameter_defaults.loc['b0gpng_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{PNG}$', 2, '']
+    parameter_defaults.loc['b0g_QSO'] = [1, [0, 5,'flat'], r'$b_{QSO}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
+    parameter_defaults.loc['b0gfid_QSO'] = [1, [1.94,0.04,'gauss'], r'$b_{QSO}^{fid}$', 2, '']
+    parameter_defaults.loc['b0gpng_QSO'] = [1, [1.94,0.04,'gauss'], r'$b_{QSO}^{PNG}$', 2, '']
+    parameter_defaults.loc['KsysSGC_LRG'] = [1, [0,10,'gauss'], r'$K_{\mathrm{SGC}^\mathrm{LRG}}$', 1, r'\%']
+    parameter_defaults.loc['KsysDEC_LRG'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}^\mathrm{LRG}}$', 1, r'\%']
+    parameter_defaults.loc['KsysMZLS_LRG'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}^\mathrm{LRG}}$', 1, r'\%']
+    parameter_defaults.loc['KsysSGC_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{SGC}^\mathrm{QSO}}$', 1, r'\%']
+    parameter_defaults.loc['KsysDEC_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}^\mathrm{QSO}}$', 1, r'\%']
+    parameter_defaults.loc['KsysMZLS_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}^\mathrm{QSO}}$', 1, r'\%']
+    parameter_defaults.loc['KsysDES_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DES}^\mathrm{QSO}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    
+    extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png',
+                        'pg_LRG', 'pg_QSO', 'ppng_LRG', 'ppng_QSO'}
+    
+    @staticmethod
+    def xi_modded_base_pars(mod, params):
+        fNL, b0g_LRG, b0g_fid_LRG, b0g_png_LRG, b0g_QSO, b0g_fid_QSO, b0g_png_QSO, \
+                Psys1_LRG, Psys2_LRG, Psys3_LRG, Psys1_QSO, Psys2_QSO, Psys3_QSO, Psys4_QSO, Kregr = params
+        
+        ells = [0, 2, 4]        
+        f_g = {term: Omega_m_z(mod.z_eff[term],mod.Om_m0_g)**0.55 for term in mod.terms}
+        f_fid = {term: Omega_m_z(mod.z_fid[term],mod.Om_m0_fid)**0.55 for term in mod.terms}
+        f_png = {term: Omega_m_z(mod.z_png[term],mod.Om_m0_png)**0.55 for term in mod.terms}
+        Dz_g = {term: Dz_norm(mod.z_eff[term],Om_m0=mod.Om_m0_g) for term in mod.terms}
+        Dz_fid = {term: Dz_norm(mod.z_fid[term],Om_m0=mod.Om_m0_fid) for term in mod.terms}
+        Dz_png = {term: Dz_norm(mod.z_png[term],Om_m0=mod.Om_m0_png) for term in mod.terms}
+        
+        ### Define rescale factors ######
+        r_fac_fid = np.ones(mod.N_obs_vec_masked)    
+        r_fac_c1 = np.ones(mod.N_obs_vec_masked)
+        r_fac_c2 = np.ones(mod.N_obs_vec_masked)
+        r_fac_fid_png = np.ones(mod.N_obs_vec_masked)
+        
+        r_fac_fid[mod.term_masks['LRG_ell0']] = ((b0g_LRG/Dz_g['LRG_ell0'])**2 + \
+                                                 (2/3)*(b0g_LRG/Dz_g['LRG_ell0'])*f_g['LRG_ell0'] + (f_g['LRG_ell0']**2)/5)/\
+                                                ((b0g_fid_LRG/Dz_fid['LRG_ell0'])**2 + \
+                                                 (2/3)*(b0g_fid_LRG/Dz_fid['LRG_ell0'])*f_fid['LRG_ell0'] + (f_fid['LRG_ell0']**2)/5)
+        r_fac_fid[mod.term_masks['QSO_ell0']] = ((b0g_QSO/Dz_g['QSO_ell0'])**2 + \
+                                                 (2/3)*(b0g_QSO/Dz_g['QSO_ell0'])*f_g['QSO_ell0'] + (f_g['QSO_ell0']**2)/5)/\
+                                                ((b0g_fid_QSO/Dz_fid['QSO_ell0'])**2 + \
+                                                 (2/3)*(b0g_fid_QSO/Dz_fid['QSO_ell0'])*f_fid['QSO_ell0'] + (f_fid['QSO_ell0']**2)/5)
+
+        r_fac_fid[mod.term_masks['LRG_ell2']] = ( (4/3)*(b0g_LRG/Dz_g['LRG_ell2'])*f_g['LRG_ell2'] + (4/7)*(f_g['LRG_ell2']**2) )/\
+                                                ( (4/3)*(b0g_fid_LRG/Dz_fid['LRG_ell2'])*f_fid['LRG_ell2'] + (4/7)*(f_fid['LRG_ell2']**2) )
+        r_fac_fid[mod.term_masks['QSO_ell2']] = ( (4/3)*(b0g_QSO/Dz_g['QSO_ell2'])*f_g['QSO_ell2'] + (4/7)*(f_g['QSO_ell2']**2) )/\
+                                                ( (4/3)*(b0g_fid_QSO/Dz_fid['QSO_ell2'])*f_fid['QSO_ell2'] + (4/7)*(f_fid['QSO_ell2']**2) )
+
+        r_fac_fid[mod.term_masks['LRG_ell4']] = (f_g['LRG_ell4']/f_fid['LRG_ell4'])**2
+        r_fac_fid[mod.term_masks['QSO_ell4']] = (f_g['QSO_ell4']/f_fid['QSO_ell4'])**2
+
+        r_fac_fid_png[mod.term_masks['LRG_ell0']] = ((b0g_LRG/Dz_g['LRG_ell0'])**2 + \
+                                                     (2/3)*(b0g_LRG/Dz_g['LRG_ell0'])*f_g['LRG_ell0'] + (f_g['LRG_ell0']**2)/5)/\
+                                                ((b0g_png_LRG/Dz_png['LRG_ell0'])**2 + \
+                                                 (2/3)*(b0g_png_LRG/Dz_png['LRG_ell0'])*f_png['LRG_ell0'] + (f_png['LRG_ell0']**2)/5)
+        r_fac_fid_png[mod.term_masks['QSO_ell0']] = ((b0g_QSO/Dz_g['QSO_ell0'])**2 + \
+                                                     (2/3)*(b0g_QSO/Dz_g['QSO_ell0'])*f_g['QSO_ell0'] + (f_g['QSO_ell0']**2)/5)/\
+                                                ((b0g_png_QSO/Dz_png['QSO_ell0'])**2 + \
+                                                 (2/3)*(b0g_png_QSO/Dz_png['QSO_ell0'])*f_png['QSO_ell0'] + (f_png['QSO_ell0']**2)/5)
+
+        r_fac_fid_png[mod.term_masks['LRG_ell2']] = ( (4/3)*(b0g_LRG/Dz_g['LRG_ell2'])*f_g['LRG_ell2'] + (4/7)*(f_g['LRG_ell2']**2) )/\
+                                                ( (4/3)*(b0g_png_LRG/Dz_png['LRG_ell2'])*f_png['LRG_ell2'] + (4/7)*(f_png['LRG_ell2']**2) )
+        r_fac_fid_png[mod.term_masks['QSO_ell2']] = ( (4/3)*(b0g_QSO/Dz_g['QSO_ell2'])*f_g['QSO_ell2'] + (4/7)*(f_g['QSO_ell2']**2) )/\
+                                                ( (4/3)*(b0g_png_QSO/Dz_png['QSO_ell2'])*f_png['QSO_ell2'] + (4/7)*(f_png['QSO_ell2']**2) )
+
+        r_fac_fid_png[mod.term_masks['LRG_ell4']] = (f_g['LRG_ell4']/f_png['LRG_ell4'])**2
+        r_fac_fid_png[mod.term_masks['QSO_ell4']] = (f_g['QSO_ell4']/f_png['QSO_ell4'])**2
+        
+        r_fac_c1[mod.term_masks['LRG_ell0']] = (((b0g_LRG/Dz_g['LRG_ell0']) + f_g['LRG_ell0']/3)*\
+                                                ((b0g_LRG/Dz_g['LRG_ell0'])-mod.pg_LRG)*((mod.Om_m0_g*mod.H0**2)/Dz_g['LRG_ell0']))/\
+                                                (((b0g_png_LRG/Dz_png['LRG_ell0']) + f_png['LRG_ell0']/3)*\
+                                                 ((b0g_png_LRG/Dz_png['LRG_ell0'])-mod.ppng_LRG)*\
+                                                     ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['LRG_ell0']))
+        r_fac_c1[mod.term_masks['QSO_ell0']] = (((b0g_QSO/Dz_g['QSO_ell0']) + f_g['QSO_ell0']/3)*\
+                                                ((b0g_QSO/Dz_g['QSO_ell0'])-mod.pg_QSO)*((mod.Om_m0_g*mod.H0**2)/Dz_g['QSO_ell0']))/\
+                                        (((b0g_png_QSO/Dz_png['QSO_ell0']) + f_png['QSO_ell0']/3)*\
+                                         ((b0g_png_QSO/Dz_png['QSO_ell0'])-mod.ppng_QSO)*\
+                                             ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['QSO_ell0']))
+
+        r_fac_c2[mod.term_masks['LRG_ell0']] = ((((b0g_LRG/Dz_g['LRG_ell0'])-mod.pg_LRG)*((mod.Om_m0_g*mod.H0**2)/Dz_g['LRG_ell0']))**2)/\
+                                                ((((b0g_png_LRG/Dz_png['LRG_ell0'])-mod.ppng_LRG)*\
+                                                  ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['LRG_ell0']))**2)
+        r_fac_c2[mod.term_masks['QSO_ell0']] = ((((b0g_QSO/Dz_g['QSO_ell0'])-mod.pg_QSO)*\
+                                                 ((mod.Om_m0_g*mod.H0**2)/Dz_g['QSO_ell0']))**2)/\
+                                                ((((b0g_png_QSO/Dz_png['QSO_ell0'])-mod.ppng_QSO)*\
+                                                  ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['QSO_ell0']))**2)
+
+        r_fac_c1[mod.term_masks['LRG_ell2']] = (f_g['LRG_ell2']*((b0g_LRG/Dz_g['LRG_ell2'])-mod.pg_LRG)*\
+                                                ((mod.Om_m0_g*mod.H0**2)/Dz_g['LRG_ell2']))/\
+                                                (f_png['LRG_ell2']*((b0g_png_LRG/Dz_png['LRG_ell2'])-mod.ppng_LRG)*\
+                                                 ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['LRG_ell2']))
+        r_fac_c1[mod.term_masks['QSO_ell2']] = (f_g['QSO_ell2']*((b0g_QSO/Dz_g['QSO_ell2'])-mod.pg_QSO)*\
+                                                ((mod.Om_m0_g*mod.H0**2)/Dz_g['QSO_ell2']))/\
+                                                (f_png['QSO_ell2']*((b0g_png_QSO/Dz_png['QSO_ell2'])-mod.ppng_QSO)*\
+                                                 ((mod.Om_m0_png*mod.H0_png**2)/Dz_png['QSO_ell2']))
+        #################################    
+        fid_term = r_fac_fid*(mod.masked['xi_fid'])
+        PNG_term = r_fac_c1*mod.masked['c1']*fNL + r_fac_c2*mod.masked['c2']*(fNL**2)
+        sys_term = r_fac_fid_png*((mod.masked['A1_LRG']*Psys1_LRG**2+mod.masked['B1_LRG']*Psys1_LRG) +\
+                                  (mod.masked['A2_LRG']*Psys2_LRG**2+mod.masked['B2_LRG']*Psys2_LRG) +\
+                                  (mod.masked['A3_LRG']*Psys3_LRG**2+mod.masked['B3_LRG']*Psys3_LRG) +\
+                                  (mod.masked['A1_QSO']*Psys1_QSO**2+mod.masked['B1_QSO']*Psys1_QSO) +\
+                                  (mod.masked['A2_QSO']*Psys2_QSO**2+mod.masked['B2_QSO']*Psys2_QSO) +\
+                                  (mod.masked['A3_QSO']*Psys3_QSO**2+mod.masked['B3_QSO']*Psys3_QSO) +\
+                                  (mod.masked['A4_QSO']*Psys4_QSO**2+mod.masked['B4_QSO']*Psys4_QSO))
+        regression_term = r_fac_fid_png*mod.masked['pvar_par_Kregr']*Kregr
+        return fid_term + PNG_term + sys_term + regression_term
+
 # class DR2_nosys_oqe:
 #     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
 #     parameter_defaults = parameter_defaults.set_index('key')
