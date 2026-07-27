@@ -6,7 +6,7 @@ class chain:
     def __init__(self, filepath, 
                  label=None,
                  color=None,
-                 lazy_load=False,
+                 lazy_load=True,
                  verbose=False):
         """
         Initializes a chain object which stores the MCMC output array as well as
