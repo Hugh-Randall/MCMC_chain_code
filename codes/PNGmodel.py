@@ -276,12 +276,13 @@ class PNGmodel:
             discard=burn_in_steps,thin=thinner,flat=True)
         np.savetxt(fname_chain, burn_samples)
         self.qnts = get_ints(burn_samples)
-        
-        for i in range(self.num_params):
-            param = self.parameters[i]
-            print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
-                  str(np.round(self.qnts[i][0],decimals=2))+' - '+
-                  str(np.round(self.qnts[i][2],decimals=2)))
+
+        if verbose:
+            for i in range(self.num_params):
+                param = self.parameters[i]
+                print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
+                      str(np.round(self.qnts[i][0],decimals=2))+' - '+
+                      str(np.round(self.qnts[i][2],decimals=2)))
 
         #####################################################
         ### Compute chi squared and number of dof
