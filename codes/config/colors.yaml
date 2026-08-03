@@ -24,6 +24,6 @@ purple:
 pink:
     gtc_color: 'pinks'
     text_color: 'pink'
-yellow:
-    gtc_color: 'yellows'
-    text_color: 'yellow'
+green2:
+    gtc_color: 'greens'
+    text_color: 'limegreen'

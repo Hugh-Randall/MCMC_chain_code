@@ -145,11 +145,13 @@ class PNGmodel:
     def run_sampling(self, 
                      min_type, 
                      fname_chain, 
-                     data_obs=None, params_toy=None,
+                     data_obs=None, 
+                     params_toy=None,
                      s_min=None, s_max=None, s_cutwindow=None, exclude=[], # scale/term cuts used to decide what to mask in the model
                      nwalkers=75, nsteps=20000, burn_in_steps=500, thinner=1, multiprocessing=False, # model attributes
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
                      update_priors=None,
+                     verbose=True,
                      **kwargs):
         """
         Runs the MCMC parameter estimation and saves the resulting chains along with their metadata.
@@ -206,6 +208,8 @@ class PNGmodel:
             keys must be strings corresponding to the keys of the parameter_defaults dataframe. The values 
             must be arrays corresponding to the values with which the chosen parameter's prior will be replaced.
             For example, update_priors={'b1g':[1.90, 0.06, 'gauss']}
+        verbose : bool, optional
+            If true, prints the marginalized value and uncertainty of each POI. Default is True. 
         kwargs : dict, optional
             Used to add data that is necessary to run the model but not previously loaded. The values 
             passed should correspond to those defined in the given MathModel's 'extra_parameters'.
