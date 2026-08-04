@@ -28,7 +28,7 @@ class MathModel:
     
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
 
     extra_parameters = {'z_eff'}
     @staticmethod
@@ -38,7 +38,7 @@ class MathModel:
 class Y1:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b1g'] = [1, [0.5, 4,'flat'], r'$b_{1g}$', 2, '']
     parameter_defaults.loc['b1h'] = [1, [1.94,0.04,'gauss'], r'$b_{1h}$', 2, '']
     parameter_defaults.loc['b1gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{1g}^{fid}$', 2, '']
@@ -121,7 +121,7 @@ class DR2_nosys:
 class DR2:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b1g'] = [1, [0.5, 4,'flat'], r'$b_{1g}$', 2, '']
     parameter_defaults.loc['b1gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{1g}^{fid}$', 2, '']
     parameter_defaults.loc['pfid'] = [1, [1,0.1,'gauss'], r'$p_{fid}$', 1,'']
@@ -289,7 +289,7 @@ class DR2:
 class DR2_LRG:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b0g'] = [1, [0.5, 4,'flat'], r'$b_{0g}$', 2, '']
     parameter_defaults.loc['b0gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{0g}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng'] = [1, [1.94,0.04,'gauss'], r'$b_{0g}^{png}$', 2, '']
@@ -413,7 +413,7 @@ class DR2_QSO:
 class DR2_cross:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b0g_LRG'] = [1, [0, 5,'flat'], r'$b_{LRG}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
     parameter_defaults.loc['b0gfid_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{PNG}$', 2, '']
@@ -645,7 +645,7 @@ class DR2_cross_all:
 class DR2_cross_all_pprior:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b0g_LRG'] = [1, [0, 5,'flat'], r'$b_{LRG}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
     parameter_defaults.loc['b0gfid_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{PNG}$', 2, '']
@@ -809,7 +809,7 @@ class DR2_cross_all_pprior:
 class DR2_LRG_QSO:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b0g_LRG'] = [1, [0, 5,'flat'], r'$b_{LRG}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
     parameter_defaults.loc['b0gfid_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng_LRG'] = [1, [1.94,0.04,'gauss'], r'$b_{LRG}^{PNG}$', 2, '']
@@ -969,7 +969,7 @@ class DR2_LRG_QSO:
 class DR2_nosys_oqe_ab:
     parameter_defaults = pd.DataFrame(columns=['key', 'init', 'prior', 'plot_label', 'num_decimals', 'unit'])
     parameter_defaults = parameter_defaults.set_index('key')
-    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 0, '']
+    parameter_defaults.loc['fNL'] = [0, [-250, 250,'flat'], r'$f_{NL}$', 1, '']
     parameter_defaults.loc['b0g'] = [1, [0.5, 5,'flat'], r'$b_{0g}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
     parameter_defaults.loc['b0gfid'] = [1, [1.94,0.04,'gauss'], r'$b_{0g}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng'] = [1, [1.94,0.04,'gauss'], r'$b_{0g}^{PNG}$', 2, '']
