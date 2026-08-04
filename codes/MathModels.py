@@ -296,7 +296,7 @@ class DR2_LRG:
     parameter_defaults.loc['KsysSGC'] = [1, [0,10,'gauss'], r'$K_{\mathrm{SGC}}$', 1, r'\%']
     parameter_defaults.loc['KsysDEC'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}}$', 1, r'\%']
     parameter_defaults.loc['KsysMZLS'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}}$', 1, r'\%']
-    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,0.1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
 
     extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png', 'pg', 'ppng'}
     # z_eff, z_fid should both be dicts
@@ -358,7 +358,7 @@ class DR2_QSO:
     parameter_defaults.loc['KsysDEC'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}}$', 1, r'\%']
     parameter_defaults.loc['KsysMZLS'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}}$', 1, r'\%']
     parameter_defaults.loc['KsysDES'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DES}}$', 1, r'\%']
-    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,0.1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
     
     extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png', 'pg', 'ppng'}
     # z_eff, z_fid should both be dicts
@@ -420,7 +420,7 @@ class DR2_cross:
     parameter_defaults.loc['b0g_QSO'] = [1, [0, 5,'flat'], r'$b_{QSO}$', 2, ''] # made upper bound higher because QSO b w/OQE ~3
     parameter_defaults.loc['b0gfid_QSO'] = [1, [1.94,0.04,'gauss'], r'$b_{QSO}^{fid}$', 2, '']
     parameter_defaults.loc['b0gpng_QSO'] = [1, [1.94,0.04,'gauss'], r'$b_{QSO}^{PNG}$', 2, '']
-    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,0.1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
     
     extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png',
                         'pg_LRG', 'pg_QSO', 'ppng_LRG', 'ppng_QSO'}
@@ -499,7 +499,7 @@ class DR2_cross_all:
     parameter_defaults.loc['KsysDEC_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}^\mathrm{QSO}}$', 1, r'\%']
     parameter_defaults.loc['KsysMZLS_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}^\mathrm{QSO}}$', 1, r'\%']
     parameter_defaults.loc['KsysDES_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DES}^\mathrm{QSO}}$', 1, r'\%']
-    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,0.1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
     
     extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png',
                         'pg_LRG', 'pg_QSO', 'ppng_LRG', 'ppng_QSO'}
@@ -658,7 +658,7 @@ class DR2_LRG_QSO:
     parameter_defaults.loc['KsysDEC_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DEC}^\mathrm{QSO}}$', 1, r'\%']
     parameter_defaults.loc['KsysMZLS_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{MZLS}^\mathrm{QSO}}$', 1, r'\%']
     parameter_defaults.loc['KsysDES_QSO'] = [1, [0,10,'gauss'], r'$K_{\mathrm{DES}^\mathrm{QSO}}$', 1, r'\%']
-    parameter_defaults.loc['Kregr'] = [0, [0,1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
+    parameter_defaults.loc['Kregr'] = [0, [0,0.1,'gauss'], r'$K_{\mathrm{regr}}$', 1, r'\%']
     
     extra_parameters = {'z_eff', 'z_fid', 'z_png', 'Om_m0_g', 'Om_m0_fid', 'Om_m0_png', 'H0', 'H0_fid', 'H0_png',
                         'pg_LRG', 'pg_QSO', 'ppng_LRG', 'ppng_QSO'}
