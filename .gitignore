@@ -2,7 +2,7 @@ mychains-Y3.py
 test_script.py
 scratch_work.ipynb
 reformat_inputs.ipynb
-**/*.ipynb_checkpoints/
+.ipynb_checkpoints
 **/__pycache__/
 *.pyc
 *.pyo
