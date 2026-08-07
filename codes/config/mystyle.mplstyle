@@ -2,15 +2,15 @@ text.usetex: False
 #font.family: sans-serif
 font.size: 16
 
-xtick.top: True
+xtick.top: False
 xtick.direction: in
-xtick.minor.visible: True
+xtick.minor.visible: False
 xtick.labelsize: 16
 
 ytick.labelsize: 12
-ytick.right: True
+ytick.right: False
 ytick.direction: in
-ytick.minor.visible: True
+ytick.minor.visible: False
 
 axes.labelsize: 16
 axes.titlesize: 22

@@ -18,3 +18,12 @@ orange:
 brown:
     gtc_color: 'browns'
     text_color: 'sienna'
+purple:
+    gtc_color: 'purples'
+    text_color: 'purple'
+pink:
+    gtc_color: 'pinks'
+    text_color: 'pink'
+green2:
+    gtc_color: 'greens'
+    text_color: 'limegreen'
