@@ -671,8 +671,7 @@ class DR2_cross_all_pprior:
     @staticmethod
     def xi_modded_base_pars(mod, params):
         fNL, b0g_LRG, b0g_fid_LRG, b0g_png_LRG, b0g_QSO, b0g_fid_QSO, b0g_png_QSO, \
-                Psys1_LRG, Psys2_LRG, Psys3_LRG, Psys1_QSO, Psys2_QSO, Psys3_QSO, Psys4_QSO, Kregr, \ 
-                    pg_LRG, pg_QSO, ppng_LRG, ppng_QSO = params
+                Psys1_LRG, Psys2_LRG, Psys3_LRG, Psys1_QSO, Psys2_QSO, Psys3_QSO, Psys4_QSO, Kregr, pg_LRG, pg_QSO, ppng_LRG, ppng_QSO = params
         
         ells = [0, 2, 4]        
         f_g = {term: Omega_m_z(mod.z_eff[term],mod.Om_m0_g)**0.55 for term in mod.terms}
