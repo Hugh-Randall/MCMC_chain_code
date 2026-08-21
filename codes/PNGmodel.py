@@ -20,7 +20,7 @@ module_path = Path(__file__).parent
 
 class PNGmodel:
          
-    def __init__(self, fid_corr, math_model, terms=None):
+    def __init__(self, fid_corr, math_model, terms=None, verbose=True):
         """
         Initializes a PNGmodel object with which we can run MCMC parameter 
         estimation on various sets of data. 
@@ -40,7 +40,9 @@ class PNGmodel:
         """
         
         # Initializes the model based on a desired s_min/s_max
-        print('Initializing...')
+        self.verbose = verbose
+        if self.verbose:
+            print('Initializing...')
         # Set initial params
         self.fid_corr_filename = fid_corr
         with fits.open(self.fid_corr_filename, memmap=False) as hdul:
@@ -87,7 +89,8 @@ class PNGmodel:
             linear and quadratic fits columns are labeled c1 and c2 respectively, 
             use mapper={'c1': 'pvar_par_B1', 'c2': 'pvar_par_A1'}, to make PNGmodel.pvar_par_B2 = file['c1'].
         """
-        print('Loading model coefficients...')
+        if self.verbose:
+            print('Loading model coefficients...')
         df = reorder_fits(pd.read_csv(file), self.terms)
         cols = list(df.columns)
         to_remove = ['term', 's']
@@ -99,7 +102,8 @@ class PNGmodel:
         
         for col in cols:
             setattr(self, mapper[col], np.asarray(df[col]))
-            print(f'\tadded attribute: {mapper[col]}')
+            if self.verbose:
+                print(f'\tadded attribute: {mapper[col]}')
             self.arrays_to_mask.append(mapper[col])
         self.parameterization_files.append(file)
         return
@@ -119,7 +123,8 @@ class PNGmodel:
             Float used to rescale the covariance matrix for quick comparisons between different
             survey volumes.
         """
-        print('Loading covariance matrix...')
+        if self.verbose:
+            print('Loading covariance matrix...')
         self.cov_file = cov_pkg
         self.cov_mat = cov_rescale_factor*np.load(self.cov_file)
         self.num_cov_mocks = num_mocks
@@ -141,6 +146,13 @@ class PNGmodel:
         if not np.isfinite(lp):
             return -np.inf
         return 0.5*(lp + self.util_chi2_base_pars(params))
+
+    def log_probability_base_pars_profiling(self, params):
+        # Defines the log probability combining the likelihood and priors
+        lp = self.log_prior_base_pars(params)
+        if not np.isfinite(lp):
+            return -np.inf
+        return -0.5*(lp + self.util_chi2_base_pars(params))
     
     def run_sampling(self, 
                      min_type, 
@@ -456,7 +468,8 @@ class PNGmodel:
         ### Define Masks for this run of the model
         #####################################################
         self.make_masked(self.s_min, self.s_max, self.s_cutwindow, self.exclude)
-        print('Observable will have {} pts'.format(self.N_obs_vec_masked))
+        if self.verbose:
+            print('Observable will have {} pts'.format(self.N_obs_vec_masked))
         # self.attrs_to_delete.extend(['mask', 'term_masks', 'masked', 'N_obs_vec_masked'])
 
         #####################################################
