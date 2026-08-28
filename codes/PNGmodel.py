@@ -164,6 +164,7 @@ class PNGmodel:
                      plt_out=True, plt_color='green', savefig=False, fname_out=None, # optional plotting params 
                      update_priors=None,
                      verbose=True,
+                     save_sampler=False,
                      **kwargs):
         """
         Runs the MCMC parameter estimation and saves the resulting chains along with their metadata.
@@ -222,6 +223,9 @@ class PNGmodel:
             For example, update_priors={'b1g':[1.90, 0.06, 'gauss']}
         verbose : bool, optional
             If true, prints the marginalized value and uncertainty of each POI. Default is True. 
+        save_sampler : bool, optional
+            If true, the emcee sampler is saved as a model attribute accessed by mod.sampler. 
+            Helpful for debugging. Default is False. 
         kwargs : dict, optional
             Used to add data that is necessary to run the model but not previously loaded. The values 
             passed should correspond to those defined in the given MathModel's 'extra_parameters'.
@@ -269,7 +273,9 @@ class PNGmodel:
                                                      self.num_params,
                                                      self.log_probability_base_pars)
             self.sampler.run_mcmc(start_pos, self.nsteps, progress=True)
-        self.attrs_to_delete.append('sampler')
+
+        if not save_sampler:
+            self.attrs_to_delete.append('sampler')
 
         #####################################################
         ### Plotting/saving walker plots
