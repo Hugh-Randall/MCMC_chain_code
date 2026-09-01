@@ -298,9 +298,9 @@ class PNGmodel:
         if verbose:
             for i in range(self.num_params):
                 param = self.parameters[i]
-                print(param + ' = '+str(np.round(self.qnts[i][1],decimals=2))+' + '+
-                      str(np.round(self.qnts[i][0],decimals=2))+' - '+
-                      str(np.round(self.qnts[i][2],decimals=2)))
+                print(param + ' = '+str(np.round(self.qnts[i][1],decimals=4))+' + '+
+                      str(np.round(self.qnts[i][0],decimals=4))+' - '+
+                      str(np.round(self.qnts[i][2],decimals=4)))
 
         #####################################################
         ### Compute chi squared and number of dof
